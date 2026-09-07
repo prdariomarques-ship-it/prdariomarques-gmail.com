@@ -1,0 +1,303 @@
+import express from 'express';
+import path from 'path';
+import dotenv from 'dotenv';
+import { createServer as createViteServer } from 'vite';
+import {
+  getPortfoliosRepo,
+  getPortfolioByIdRepo,
+  updatePortfolioRepo,
+  resetPortfoliosRepo,
+  getPoliciesRepo,
+  getPolicyByIdRepo,
+} from './src/server/portfolioRepo';
+import { ComplianceAgent } from './src/server/complianceAgent';
+import { askComplianceAgent } from './src/server/geminiService';
+import { RebalanceOrder, RebalanceExecutionResult } from './src/types';
+
+dotenv.config();
+
+const app = express();
+const PORT = 3000;
+
+app.use(express.json());
+
+// ==========================================
+// API ROUTES
+// ==========================================
+
+// Endpoint GET /api/policies
+app.get('/api/policies', (req, res) => {
+  try {
+    const policies = getPoliciesRepo();
+    res.json({ success: true, count: policies.length, policies });
+  } catch (error) {
+    console.error('Error fetching policies:', error);
+    res.status(500).json({ success: false, error: 'Falha ao buscar políticas normativas' });
+  }
+});
+
+// Endpoint GET /api/policies/:id
+app.get('/api/policies/:id', (req, res) => {
+  try {
+    const policy = getPolicyByIdRepo(req.params.id);
+    if (!policy) {
+      return res.status(404).json({ success: false, error: 'Política não encontrada' });
+    }
+    res.json({ success: true, policy });
+  } catch (error) {
+    console.error('Error fetching policy:', error);
+    res.status(500).json({ success: false, error: 'Falha ao buscar política' });
+  }
+});
+
+// Endpoint GET /api/telemetry
+// Mostra o status operacional dos agentes de compliance do FlowCore
+app.get('/api/telemetry', (req, res) => {
+  try {
+    const portfolios = getPortfoliosRepo();
+    const alerts = ComplianceAgent.evaluateAllPortfolios(portfolios);
+    const criticalCount = alerts.filter((a) => a.severity === 'CRITICAL').length;
+    const warningCount = alerts.filter((a) => a.severity === 'WARNING').length;
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      orchestrator: {
+        status: 'ACTIVE_ONLINE',
+        mode: 'SUPERVISED_AUTONOMOUS',
+        lastHeartbeat: new Date().toLocaleTimeString('pt-BR'),
+        latencyMs: 38,
+      },
+      agents: [
+        {
+          id: 'agent-compliance-guard',
+          name: 'Compliance Guard Sentinel',
+          status: 'MONITORING',
+          monitoredRules: ['CVM 175', 'CMN 4.963', 'IPS Mandatos', 'Suitability CVM 30'],
+          activeBreaches: criticalCount,
+          warnings: warningCount,
+          lastScan: 'Agora',
+        },
+        {
+          id: 'agent-rebalance-engine',
+          name: 'Rebalance Allocation Planner',
+          status: 'IDLE_WAITING_APPROVAL',
+          pendingProposals: criticalCount + warningCount,
+          mode: 'SIMULATION_ONLY',
+          directExecutionAllowed: false,
+        },
+        {
+          id: 'agent-risk-monitor',
+          name: 'Portfolio Risk Assessor',
+          status: 'OPTIMAL',
+          portfoliosTracked: portfolios.length,
+          aggregateAum: portfolios.reduce((s, p) => s + p.totalAum, 0),
+        },
+      ],
+    });
+  } catch (error) {
+    console.error('Error fetching telemetry:', error);
+    res.status(500).json({ success: false, error: 'Falha na telemetria dos agentes' });
+  }
+});
+
+// Endpoint GET /api/alerts
+// Executa o ComplianceAgent contra os dados reais armazenados em portfolioRepo
+app.get('/api/alerts', (req, res) => {
+  try {
+    const portfolios = getPortfoliosRepo();
+    // Atualiza o status geral de cada carteira
+    for (const port of portfolios) {
+      port.status = ComplianceAgent.getPortfolioOverallSeverity(port);
+    }
+    const alerts = ComplianceAgent.evaluateAllPortfolios(portfolios);
+    res.json({
+      success: true,
+      totalAlerts: alerts.length,
+      criticalCount: alerts.filter((a) => a.severity === 'CRITICAL').length,
+      warningCount: alerts.filter((a) => a.severity === 'WARNING').length,
+      alerts,
+    });
+  } catch (error) {
+    console.error('Error fetching alerts:', error);
+    res.status(500).json({ success: false, error: 'Falha ao calcular alertas de compliance' });
+  }
+});
+
+// Endpoint GET /api/portfolios
+app.get('/api/portfolios', (req, res) => {
+  try {
+    const portfolios = getPortfoliosRepo();
+    for (const port of portfolios) {
+      port.status = ComplianceAgent.getPortfolioOverallSeverity(port);
+    }
+    res.json({ success: true, portfolios });
+  } catch (error) {
+    console.error('Error fetching portfolios:', error);
+    res.status(500).json({ success: false, error: 'Falha ao buscar carteiras' });
+  }
+});
+
+// Endpoint GET /api/portfolios/:id
+app.get('/api/portfolios/:id', (req, res) => {
+  try {
+    const portfolio = getPortfolioByIdRepo(req.params.id);
+    if (!portfolio) {
+      return res.status(404).json({ success: false, error: 'Carteira não encontrada' });
+    }
+    portfolio.status = ComplianceAgent.getPortfolioOverallSeverity(portfolio);
+    const allocations = ComplianceAgent.calculateAllocations(portfolio);
+    const alerts = ComplianceAgent.evaluatePortfolio(portfolio);
+
+    res.json({
+      success: true,
+      portfolio,
+      allocations,
+      alerts,
+    });
+  } catch (error) {
+    console.error('Error fetching portfolio:', error);
+    res.status(500).json({ success: false, error: 'Falha ao carregar carteira' });
+  }
+});
+
+// Endpoint GET /api/portfolios/:id/rebalance-plan
+app.get('/api/portfolios/:id/rebalance-plan', (req, res) => {
+  try {
+    const portfolio = getPortfolioByIdRepo(req.params.id);
+    if (!portfolio) {
+      return res.status(404).json({ success: false, error: 'Carteira não encontrada' });
+    }
+    const plan = ComplianceAgent.generateRebalancePlan(portfolio);
+    res.json({ success: true, orders: plan });
+  } catch (error) {
+    console.error('Error generating rebalance plan:', error);
+    res.status(500).json({ success: false, error: 'Falha ao planejar rebalanceamento' });
+  }
+});
+
+// Endpoint POST /api/portfolios/:id/rebalance
+// Executa o rebalanceamento e atualiza a carteira
+app.post('/api/portfolios/:id/rebalance', (req, res) => {
+  try {
+    const portfolio = getPortfolioByIdRepo(req.params.id);
+    if (!portfolio) {
+      return res.status(404).json({ success: false, error: 'Carteira não encontrada' });
+    }
+
+    const previousSeverity = ComplianceAgent.getPortfolioOverallSeverity(portfolio);
+    const orders: RebalanceOrder[] = req.body.orders || ComplianceAgent.generateRebalancePlan(portfolio);
+
+    let cashChange = 0;
+
+    for (const order of orders) {
+      const asset = portfolio.assets.find((a) => a.id === order.assetId);
+      if (asset) {
+        if (order.action === 'SELL') {
+          asset.quantity = Math.max(0, asset.quantity - order.quantity);
+          asset.totalValue = asset.quantity * asset.currentPrice;
+          cashChange += order.totalAmountBRL;
+        } else if (order.action === 'BUY') {
+          asset.quantity += order.quantity;
+          asset.totalValue = asset.quantity * asset.currentPrice;
+          cashChange -= order.totalAmountBRL;
+        }
+      }
+    }
+
+    // Atualiza saldo de caixa se houver sobra/falta
+    portfolio.cashBalance += cashChange;
+
+    // Recalcula totais e percentuais de alocação de cada ativo
+    const newTotalAum = portfolio.assets.reduce((sum, a) => sum + a.totalValue, 0);
+    portfolio.totalAum = newTotalAum;
+    for (const a of portfolio.assets) {
+      a.allocationPercent = newTotalAum > 0 ? (a.totalValue / newTotalAum) * 100 : 0;
+    }
+
+    // Atualiza data do último rebalanceamento
+    portfolio.lastRebalanced = new Date().toLocaleDateString('pt-BR');
+    const newSeverity = ComplianceAgent.getPortfolioOverallSeverity(portfolio);
+    portfolio.status = newSeverity;
+
+    updatePortfolioRepo(portfolio);
+
+    const auditProtocolId = `SIM-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const approver = req.body.approvedBy || 'Comitê de Alocação (Sessão Human-in-the-Loop)';
+
+    const auditLog = `[AMBIENTE DE SIMULAÇÃO] Protocolo ${auditProtocolId} registrado em ${new Date().toLocaleString('pt-BR')}. Aprovador: ${approver}. Status de compliance: ${previousSeverity} -> ${newSeverity}. ${orders.length} ordens de rebalanceamento simuladas totalizando R$ ${orders.reduce((s, o) => s + o.totalAmountBRL, 0).toLocaleString('pt-BR')}. Nenhuma ordem roteada para corretoras externas/B3 (Modo Sandbox estrito).`;
+
+    const result: RebalanceExecutionResult = {
+      success: true,
+      portfolioId: portfolio.id,
+      timestamp: new Date().toISOString(),
+      previousSeverity,
+      newSeverity,
+      executedOrders: orders,
+      auditLog,
+      updatedPortfolio: portfolio,
+      isSimulationOnly: true,
+      auditProtocolId,
+      approvedBy: approver,
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error executing rebalance:', error);
+    res.status(500).json({ success: false, error: 'Falha ao executar rebalanceamento' });
+  }
+});
+
+// Endpoint POST /api/portfolios/reset
+app.post('/api/portfolios/reset', (req, res) => {
+  try {
+    const portfolios = resetPortfoliosRepo();
+    res.json({ success: true, portfolios });
+  } catch (error) {
+    console.error('Error resetting portfolios:', error);
+    res.status(500).json({ success: false, error: 'Falha ao reiniciar dados' });
+  }
+});
+
+// Endpoint POST /api/compliance/chat
+app.post('/api/compliance/chat', async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query) {
+      return res.status(400).json({ success: false, error: 'Pergunta obrigatória' });
+    }
+    const portfolios = getPortfoliosRepo();
+    const alerts = ComplianceAgent.evaluateAllPortfolios(portfolios);
+
+    const answer = await askComplianceAgent(query, portfolios, alerts);
+    res.json({ success: true, answer });
+  } catch (error) {
+    console.error('Error in compliance chat:', error);
+    res.status(500).json({ success: false, error: 'Erro ao processar consulta de compliance' });
+  }
+});
+
+// ==========================================
+// VITE INTEGRATION
+// ==========================================
+async function startServer() {
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`FlowCore Server running on port ${PORT}`);
+  });
+}
+
+startServer();
