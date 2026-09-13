@@ -64,12 +64,18 @@ export const AiComplianceChatView: React.FC<AiComplianceChatViewProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: textToSend }),
       });
-      const data = await response.json();
+      const text = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
 
       const agentMessage: ChatMessage = {
         id: `agent-${Date.now()}`,
         sender: 'agent',
-        content: data.success ? data.answer : 'Desculpe, ocorreu um erro ao consultar o motor de compliance.',
+        content: data?.success ? data.answer : 'Desculpe, ocorreu um erro ao consultar o motor de compliance.',
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       };
 

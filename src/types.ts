@@ -26,6 +26,55 @@ export interface Asset {
   currentPrice: number;
   totalValue: number;
   allocationPercent: number;
+  averagePrice?: number;
+  unrealizedGainBRL?: number;
+  unrealizedGainPercent?: number;
+  holdingPeriodDays?: number;
+  taxRatePercent?: number;
+  isTaxExempt?: boolean;
+  taxExemptionReason?: string;
+  sector?: string;
+  regulatoryLimitPercent?: number;
+}
+
+export type TaxStrategy =
+  | 'TAX_LOSS_HARVESTING' // Priorizar venda de ativos em prejuízo para gerar crédito tributário
+  | 'MINIMUM_CAPITAL_GAIN' // Priorizar menor ganho / ativos isentos para minimizar IR a pagar
+  | 'B3_20K_EXEMPTION' // Calibrar vendas mensais de ações respeitando a isenção de R$ 20.000 da RFB
+  | 'PRO_RATA_BALANCED'; // Venda proporcional ingênua (benchmark de mercado)
+
+export interface AssetTaxDetail {
+  assetId: string;
+  ticker: string;
+  name: string;
+  assetClass: AssetClass;
+  quantityHeld: number;
+  currentPrice: number;
+  averagePrice: number;
+  totalCurrentValueBRL: number;
+  unrealizedGainLossBRL: number;
+  unrealizedGainLossPercent: number;
+  suggestedSellQty: number;
+  suggestedSellAmountBRL: number;
+  realizedGainLossBRL: number;
+  estimatedTaxBRL: number;
+  taxRatePercent: number;
+  isTaxExempt: boolean;
+  taxClassification: 'PREJUIZO_COMPENSAVEL' | 'LUCRO_TRIBUTAVEL' | 'ISENTO_LEGAL' | 'ISENTO_20K';
+}
+
+export interface TaxEfficiencyAnalysis {
+  strategy: TaxStrategy;
+  strategyLabel: string;
+  strategyDescription: string;
+  totalSellAmountBRL: number;
+  totalCapitalGainBRL: number;
+  totalEstimatedTaxBRL: number;
+  totalHarvestedLossBRL: number;
+  effectiveTaxRatePercent: number;
+  taxSavingsVsNaiveBRL: number;
+  proposedOrders: RebalanceOrder[];
+  assetTaxBreakdown: AssetTaxDetail[];
 }
 
 export interface MandateLimit {
@@ -36,6 +85,23 @@ export interface MandateLimit {
   policyId?: string;
   ruleSource?: RuleSource;
   tolerancePP?: number;
+  warningTolerancePP?: number;
+  criticalTolerancePP?: number;
+  warningTriggerPercent?: number;
+  criticalTriggerPercent?: number;
+}
+
+export interface AssetClassThresholdConfig {
+  assetClass: AssetClass;
+  minPercent: number;
+  targetPercent: number;
+  maxPercent: number;
+  warningTolerancePP: number; // Margem ou desvio (p.p.) que dispara o alerta WARNING
+  criticalTolerancePP: number; // Margem ou desvio (p.p.) que dispara o alerta CRITICAL
+  warningTriggerPercent?: number; // Percentual absoluto de alocação que aciona o aviso
+  criticalTriggerPercent?: number; // Percentual absoluto de alocação que aciona o crítico
+  sourceDescription?: string;
+  notes?: string;
 }
 
 // ----------------------------------------------------
@@ -119,11 +185,95 @@ export interface ComplianceAlert {
   policyId: string;
   limit: number;
   currentValue: number;
+  rule_source?: RuleSource;
+  policy_id?: string;
+  current_value?: number;
   difference: number;
   effectiveDate: string;
   tolerancePP: number;
   mandateVsInternalExplanation?: string;
   aiExplanation?: AiExplanation;
+}
+
+export interface ComplianceNotification {
+  id: string;
+  alertId: string;
+  portfolioId: string;
+  portfolioName: string;
+  portfolioCode?: string;
+  clientName: string;
+  assetClass: AssetClass;
+  severity: AlertSeverity;
+  currentPercent: number;
+  maxPercent: number;
+  minPercent: number;
+  deviationPP: number;
+  excessValueBRL: number;
+  ruleSource: RuleSource;
+  policyId: string;
+  limit?: number;
+  currentValue?: number;
+  difference?: number;
+  rule_source?: RuleSource;
+  policy_id?: string;
+  current_value?: number;
+  mandateVsInternalExplanation?: string;
+  message: string;
+  suggestedAction: string;
+  timestamp: string;
+  createdAt: number;
+  read: boolean;
+  secondaryChannelsNotified?: ('EMAIL' | 'SMS')[];
+}
+
+export interface EmailChannelConfig {
+  enabled: boolean;
+  recipient: string;
+  sendOnCriticalOnly: boolean;
+  includeReportAttachment: boolean;
+}
+
+export interface SmsChannelConfig {
+  enabled: boolean;
+  phoneNumber: string;
+  sendOnCriticalOnly: boolean;
+}
+
+export interface NotificationChannelSettings {
+  email: EmailChannelConfig;
+  sms: SmsChannelConfig;
+  inAppAudio: boolean;
+  updatedAt?: string;
+}
+
+export interface SecondaryDispatchLog {
+  id: string;
+  channel: 'EMAIL' | 'SMS';
+  recipient: string;
+  status: 'SENT' | 'SIMULATED_DELIVERY' | 'FAILED';
+  subjectOrTitle: string;
+  bodyPreview: string;
+  sentAt: string;
+  alertId?: string;
+  portfolioName?: string;
+  severity?: AlertSeverity;
+}
+
+export interface ComplianceBreachHistoryPoint {
+  date: string; // e.g. '07/Fev'
+  fullDate: string; // e.g. '07/02/2026'
+  dayIndex: number;
+  totalBreaches: number;
+  criticalBreaches: number;
+  warningBreaches: number;
+  totalExcessBRL: number;
+  // Max deviation in p.p. recorded across portfolios
+  maxDeviationPP: number;
+  // Per-portfolio deviation in p.p. above limit
+  portfolioDeviations: Record<string, number>;
+  // Optional market event on that day
+  eventTag?: string;
+  marketNote?: string;
 }
 
 export interface RebalanceOrder {
@@ -135,6 +285,12 @@ export interface RebalanceOrder {
   unitPrice: number;
   totalAmountBRL: number;
   reason: string;
+  // Campos de Otimização Fiscal
+  averagePrice?: number;
+  realizedGainLossBRL?: number;
+  estimatedTaxBRL?: number;
+  taxStrategyApplied?: TaxStrategy;
+  taxClassification?: 'PREJUIZO_COMPENSAVEL' | 'LUCRO_TRIBUTAVEL' | 'ISENTO_LEGAL' | 'ISENTO_20K';
 }
 
 export type RebalanceSafetyStage =

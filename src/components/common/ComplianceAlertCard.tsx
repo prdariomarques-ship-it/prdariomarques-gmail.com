@@ -35,22 +35,77 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
   isCopied = false,
 }) => {
   const isCritical = alert.severity === 'CRITICAL';
-  const isMandate = alert.ruleSource === 'MANDATO_CLIENTE';
-  const isInternal = alert.ruleSource === 'POLITICA_INTERNA';
-  const isRegulatory = alert.ruleSource === 'REGRA_REGULATORIA';
-  const isSuitability = alert.ruleSource === 'SUITABILITY';
+  const effectiveRuleSource = alert.rule_source ?? alert.ruleSource;
+  const effectivePolicyId = alert.policy_id ?? alert.policyId;
+  const effectiveCurrentValue = alert.current_value ?? alert.currentValue;
+  const effectiveLimit = alert.limit;
 
-  const progressRatio = Math.min(100, Math.max(0, (alert.currentValue / (alert.limit * 1.35)) * 100));
+  const isMandate = effectiveRuleSource === 'MANDATO_CLIENTE';
+  const isInternal = effectiveRuleSource === 'POLITICA_INTERNA';
+  const isRegulatory = effectiveRuleSource === 'REGRA_REGULATORIA';
+  const isSuitability = effectiveRuleSource === 'SUITABILITY';
+
+  const progressRatio = Math.min(100, Math.max(0, (effectiveCurrentValue / (alert.limit * 1.35)) * 100));
 
   return (
     <div
       id={`alert-card-${alert.id}`}
       className={`rounded-2xl p-6 shadow-sm transition space-y-5 backdrop-blur-xl border ${
-        isCritical
-          ? 'bg-slate-900/90 border-rose-800/40 hover:border-rose-700/60 shadow-[0_8px_30px_rgba(244,63,94,0.08)]'
-          : 'bg-slate-900/90 border-amber-800/40 hover:border-amber-700/60 shadow-[0_8px_30px_rgba(245,158,11,0.08)]'
+        isMandate
+          ? isCritical
+            ? 'bg-slate-900/95 border-purple-600/60 shadow-[0_12px_32px_rgba(168,85,247,0.18)] ring-1 ring-purple-500/40'
+            : 'bg-slate-900/95 border-purple-700/40 shadow-[0_8px_24px_rgba(168,85,247,0.1)]'
+          : isInternal
+          ? isCritical
+            ? 'bg-slate-900/95 border-indigo-600/60 shadow-[0_12px_32px_rgba(99,102,241,0.18)] ring-1 ring-indigo-500/40'
+            : 'bg-slate-900/95 border-indigo-700/40 shadow-[0_8px_24px_rgba(99,102,241,0.1)]'
+          : isCritical
+          ? 'bg-slate-900/90 border-rose-800/50 hover:border-rose-700/70 shadow-[0_8px_30px_rgba(244,63,94,0.1)]'
+          : 'bg-slate-900/90 border-amber-800/50 hover:border-amber-700/70 shadow-[0_8px_30px_rgba(245,158,11,0.1)]'
       }`}
     >
+      {/* ------------------------------------------------------------- */}
+      {/* SCOPE BANNER: Mandato do Cliente vs Política Interna           */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        className={`px-4 py-2.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold ${
+          isMandate
+            ? 'bg-purple-950/60 border-purple-500/50 text-purple-200'
+            : isInternal
+            ? 'bg-indigo-950/60 border-indigo-500/50 text-indigo-200'
+            : isRegulatory
+            ? 'bg-rose-950/60 border-rose-500/50 text-rose-200'
+            : 'bg-cyan-950/60 border-cyan-500/50 text-cyan-200'
+        }`}
+      >
+        <div className="flex items-center space-x-2">
+          {isMandate && <Scroll className="w-4 h-4 text-purple-300 shrink-0" />}
+          {isInternal && <Building className="w-4 h-4 text-indigo-300 shrink-0" />}
+          {isRegulatory && <Gavel className="w-4 h-4 text-rose-300 shrink-0" />}
+          {isSuitability && <FileCheck className="w-4 h-4 text-cyan-300 shrink-0" />}
+          <span>
+            {isMandate
+              ? '📜 VIOLAÇÃO DE MANDATO DO CLIENTE (IPS CONTRATUAL BILATERAL)'
+              : isInternal
+              ? '🏛️ DESVIO DE POLÍTICA INTERNA DA GESTORA (COMITÊ DE RISCO E ALOCAÇÃO)'
+              : isRegulatory
+              ? '⚖️ VIOLAÇÃO DE ENQUADRAMENTO REGULATÓRIO (CVM 175)'
+              : '📋 DESENQUADRAMENTO DE SUITABILITY (CVM 30)'}
+          </span>
+        </div>
+        <span
+          className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border shrink-0 ${
+            isMandate
+              ? 'bg-purple-500/20 text-purple-200 border-purple-400/40'
+              : isInternal
+              ? 'bg-indigo-500/20 text-indigo-200 border-indigo-400/40'
+              : 'bg-black/40 text-slate-200 border-white/10'
+          }`}
+        >
+          {isMandate ? 'Risco Fiduciário Individual' : isInternal ? 'Governança da Gestora' : 'Conformidade Externa'}
+        </span>
+      </div>
+
       {/* ------------------------------------------------------------- */}
       {/* Top Header: Severity, Portfolio/Client, Quick Actions          */}
       {/* ------------------------------------------------------------- */}
@@ -121,9 +176,9 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* DYNAMIC AUDIT STRIP: rule_source, policy_id, limit, current   */}
+      {/* DYNAMIC AUDIT STRIP: rule_source, policy_id, limit, current_value */}
       {/* ------------------------------------------------------------- */}
-      <div className="p-3.5 bg-slate-950/80 rounded-xl border border-white/[0.08] flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="p-3.5 bg-slate-950/90 rounded-xl border border-white/[0.08] flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
           {/* Dynamic rule_source with distinct visual branding */}
           <div className="flex items-center space-x-1.5">
@@ -143,7 +198,7 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
               {isInternal && <Building className="w-3.5 h-3.5 text-indigo-400" />}
               {isRegulatory && <Gavel className="w-3.5 h-3.5 text-rose-400" />}
               {isSuitability && <FileCheck className="w-3.5 h-3.5 text-cyan-400" />}
-              <span>{alert.ruleSource}</span>
+              <span>{effectiveRuleSource}</span>
             </span>
           </div>
 
@@ -151,7 +206,29 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
           <div className="flex items-center space-x-1.5">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">policy_id:</span>
             <span className="px-2.5 py-1 rounded-md font-mono text-xs font-semibold bg-slate-800/90 text-slate-200 border border-white/[0.08]">
-              {alert.policyId}
+              {effectivePolicyId}
+            </span>
+          </div>
+
+          {/* Dynamic limit */}
+          <div className="flex items-center space-x-1.5">
+            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">limit:</span>
+            <span className="px-2.5 py-1 rounded-md font-mono text-xs font-bold bg-slate-800/90 text-slate-200 border border-white/[0.08]">
+              {effectiveLimit.toFixed(1)}%
+            </span>
+          </div>
+
+          {/* Dynamic current_value */}
+          <div className="flex items-center space-x-1.5">
+            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">current_value:</span>
+            <span
+              className={`px-2.5 py-1 rounded-md font-mono text-xs font-extrabold border ${
+                isCritical
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              }`}
+            >
+              {effectiveCurrentValue.toFixed(1)}%
             </span>
           </div>
 
@@ -220,7 +297,7 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
               current_value (real em custódia)
             </span>
             <strong className={`text-lg font-mono font-extrabold ${isCritical ? 'text-rose-400' : 'text-amber-400'}`}>
-              {alert.currentValue.toFixed(1)}%
+              {effectiveCurrentValue.toFixed(1)}%
             </strong>
             <span className="text-[10px] opacity-80 block mt-0.5">
               Posição apurada em carteira
@@ -271,9 +348,9 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
           <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 font-mono">
             <span>Piso (Min): {alert.minPercent.toFixed(0)}%</span>
             <span>Meta (Target): {alert.targetPercent.toFixed(0)}%</span>
-            <span className="text-slate-300 font-bold">limit: {alert.limit.toFixed(1)}%</span>
+            <span className="text-slate-300 font-bold">limit: {effectiveLimit.toFixed(1)}%</span>
             <span className={`font-bold ${isCritical ? 'text-rose-400' : 'text-amber-400'}`}>
-              current_value: {alert.currentValue.toFixed(1)}%
+              current_value: {effectiveCurrentValue.toFixed(1)}%
             </span>
           </div>
         </div>
@@ -322,8 +399,8 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
         <p className="text-xs leading-relaxed font-medium">
           {alert.mandateVsInternalExplanation ||
             (isMandate
-              ? `Este alerta [${alert.policyId}] está classificado como MANDATO_CLIENTE: decorre do contrato bilateral (IPS) firmado diretamente entre a gestora e ${alert.clientName}. O desenquadramento compromete o dever fiduciário contratual individualizado, exigindo rebalanceamento compulsório prioritário ou formalização de termo de anuência prévia com o titular.`
-              : `Este alerta [${alert.policyId}] está classificado como POLITICA_INTERNA: decorre de diretriz prudencial aprovada pelo Comitê de Risco e Alocação da gestora para salvaguardar a instituição e mitigar concentração sistêmica. Não configura quebra direta do contrato com o cliente, mas exige deliberação do Comitê de Risco interno para autorização de contingência ou enquadramento gradual.`)}
+              ? `Este alerta [${effectivePolicyId}] está classificado como MANDATO_CLIENTE: decorre do contrato bilateral (IPS) firmado diretamente entre a gestora e ${alert.clientName}. O desenquadramento compromete o dever fiduciário contratual individualizado, exigindo rebalanceamento compulsório prioritário ou formalização de termo de anuência prévia com o titular.`
+              : `Este alerta [${effectivePolicyId}] está classificado como POLITICA_INTERNA: decorre de diretriz prudencial aprovada pelo Comitê de Risco e Alocação da gestora para salvaguardar a instituição e mitigar concentração sistêmica. Não configura quebra direta do contrato com o cliente, mas exige deliberação do Comitê de Risco interno para autorização de contingência ou enquadramento gradual.`)}
         </p>
 
         {/* Side-by-side Comparative Guide Pill */}
@@ -378,16 +455,19 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
               } Risco de tracking error e não conformidade perante regulamentação CVM.`,
               action: `${alert.suggestedAction} (Volume sugerido para rebalancear: R$ ${alert.recommendedTradeValue.toLocaleString('pt-BR')}).`,
               confidence: alert.severity === 'CRITICAL' ? 98 : 92,
-              source: `${alert.ruleSource} • Política ${alert.policyId} • Resolução CVM 175 Anexo I`,
+              source: `${effectiveRuleSource} • Política ${effectivePolicyId} • Resolução CVM 175 Anexo I`,
             }
           }
           title={`Parecer Fiduciário de IA • ${alert.assetClass}`}
           category="COMPLIANCE"
           severity={alert.severity}
-          ruleSource={alert.ruleSource}
-          policyId={alert.policyId}
+          ruleSource={effectiveRuleSource}
+          rule_source={effectiveRuleSource}
+          policyId={effectivePolicyId}
+          policy_id={effectivePolicyId}
           limit={alert.limit}
-          currentValue={alert.currentValue}
+          currentValue={effectiveCurrentValue}
+          current_value={effectiveCurrentValue}
           difference={alert.difference}
           mandateVsInternalExplanation={alert.mandateVsInternalExplanation}
           onApplyAction={onStartRebalance ? () => onStartRebalance(alert.portfolioId) : undefined}

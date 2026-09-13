@@ -20,7 +20,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { Portfolio, ComplianceAlert, PipelineDeal, AdvisorPerformance, DataMode } from '../types';
-import { ClientsAtRiskList } from './ClientsAtRiskList';
+import { ClientsAtRisk } from './ClientsAtRisk';
 import { MiniSparkline } from './MiniSparkline';
 import { AIInsightCard } from './AIInsightCard';
 
@@ -319,19 +319,20 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         </div>
       </div>
 
-      {/* Tier-1 Executive KPI Metric Cards (High-End Glassmorphism) */}
+      {/* Tier-1 Executive KPI Metric Cards (Premium Glassmorphism & High-End Visual Hierarchy) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total AUM */}
-        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/65 via-slate-900/85 to-slate-950/95 border border-white/[0.09] hover:border-emerald-400/50 hover:-translate-y-1 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_16px_36px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_40px_rgba(16,185,129,0.15)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-emerald-400/50 before:to-transparent">
-          {/* Ambient Glass Glow */}
-          <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/25 transition-all duration-500" />
+        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/40 via-slate-900/60 to-slate-950/80 border border-white/[0.12] hover:border-emerald-400/40 hover:-translate-y-1.5 transition-all duration-300 ease-out shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_20px_48px_0_rgba(16,185,129,0.18),inset_0_1px_1px_0_rgba(255,255,255,0.25)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-emerald-400/50 before:to-transparent">
+          {/* Ambient Glass Glow & Specular Flare */}
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/25 transition-all duration-500" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10">
             {/* Header / Metric Label */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
+                <span className="text-[11px] font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
                   AUM Sob Gestão
                 </span>
                 <span className="mt-0.5 text-[9px] font-bold uppercase font-mono tracking-wider">
@@ -344,7 +345,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                   )}
                 </span>
               </div>
-              <div className="p-2.5 bg-emerald-500/15 border border-emerald-400/30 rounded-xl text-emerald-300 backdrop-blur-md shadow-sm">
+              <div className="p-2.5 bg-emerald-500/15 border border-emerald-400/30 rounded-xl text-emerald-300 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] group-hover:scale-105 transition-transform">
                 <DollarSign className="w-4 h-4" />
               </div>
             </div>
@@ -353,7 +354,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             <div className="mt-3.5">
               <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2 font-mono">
                 R$ {(effectiveAum / 1000000).toFixed(2)}
-                <span className="text-xl font-bold text-slate-400 font-sans">M</span>
+                <span className="text-xl font-bold text-slate-300 font-sans">M</span>
                 {isSimulatingPipeline && (
                   <span className="text-[10px] font-extrabold text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/40 backdrop-blur-sm shadow-sm animate-pulse">
                     +27% Simulado
@@ -362,7 +363,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-emerald-400 font-bold flex items-center bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                <span className="text-emerald-400 font-bold flex items-center bg-emerald-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20">
                   <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
                   +4.8% MoM (+R$ 2.35M)
                 </span>
@@ -370,7 +371,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </div>
 
               {/* Progress bar */}
-              <div className="w-full bg-slate-950/70 border border-white/[0.06] h-2 rounded-full mt-3 overflow-hidden p-0.5">
+              <div className="w-full bg-slate-950/70 border border-white/[0.08] h-2 rounded-full mt-3 overflow-hidden p-0.5 backdrop-blur-sm shadow-inner">
                 <div
                   className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 h-full rounded-full shadow-[0_0_10px_rgba(16,185,129,0.7)]"
                   style={{ width: `${Math.min(100, (effectiveAum / 75000000) * 100)}%` }}
@@ -380,7 +381,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
           </div>
 
           {/* Docked Telemetry Chamber for Sparkline */}
-          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/60 border-t border-white/[0.08] backdrop-blur-md relative z-10">
+          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/50 border-t border-white/[0.08] backdrop-blur-md relative z-10">
             <MiniSparkline
               data={aumQuarterlyTrend}
               color="emerald"
@@ -393,16 +394,17 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         </div>
 
         {/* Card 2: Total Revenue */}
-        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/65 via-slate-900/85 to-slate-950/95 border border-white/[0.09] hover:border-amber-400/50 hover:-translate-y-1 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_16px_36px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_40px_rgba(245,158,11,0.15)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-amber-400/50 before:to-transparent">
+        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/40 via-slate-900/60 to-slate-950/80 border border-white/[0.12] hover:border-amber-400/40 hover:-translate-y-1.5 transition-all duration-300 ease-out shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_20px_48px_0_rgba(245,158,11,0.18),inset_0_1px_1px_0_rgba(255,255,255,0.25)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-amber-400/50 before:to-transparent">
           {/* Ambient Glass Glow */}
-          <div className="absolute -top-12 -right-12 w-36 h-36 bg-amber-500/15 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/25 transition-all duration-500" />
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/15 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-500/25 transition-all duration-500" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10">
             {/* Header / Metric Label */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                <span className="text-[11px] font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.9)]" />
                   Receita Total de Gestão
                 </span>
                 <span className="mt-0.5 text-[9px] font-bold uppercase font-mono tracking-wider">
@@ -413,7 +415,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                   )}
                 </span>
               </div>
-              <div className="p-2.5 bg-amber-500/15 border border-amber-400/30 rounded-xl text-amber-300 backdrop-blur-md shadow-sm">
+              <div className="p-2.5 bg-amber-500/15 border border-amber-400/30 rounded-xl text-amber-300 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] group-hover:scale-105 transition-transform">
                 <TrendingUp className="w-4 h-4" />
               </div>
             </div>
@@ -427,14 +429,14 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-emerald-400 font-bold flex items-center bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                <span className="text-emerald-400 font-bold flex items-center bg-emerald-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20">
                   <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
                   +12.4% vs Orçado
                 </span>
-                <span className="text-slate-300 text-[11px] font-medium">Fee: <strong className="text-amber-200">0.85% a.a.</strong></span>
+                <span className="text-slate-300 text-[11px] font-medium">Fee: <strong className="text-amber-200 font-mono">0.85% a.a.</strong></span>
               </div>
 
-              <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.02] px-2 py-1 rounded-md border border-white/[0.04]">
+              <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.03] backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/[0.06]">
                 <span>ARR Estimado:</span>
                 <span className="font-semibold text-slate-200 font-mono">R$ {(annualManagementRevenue / 1000000).toFixed(2)}M + perf</span>
               </div>
@@ -442,7 +444,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
           </div>
 
           {/* Docked Telemetry Chamber for Sparkline */}
-          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/60 border-t border-white/[0.08] backdrop-blur-md relative z-10">
+          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/50 border-t border-white/[0.08] backdrop-blur-md relative z-10">
             <MiniSparkline
               data={revenueQuarterlyTrend}
               color="amber"
@@ -454,23 +456,24 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         </div>
 
         {/* Card 3: Pipeline Value */}
-        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/65 via-slate-900/85 to-slate-950/95 border border-white/[0.09] hover:border-cyan-400/50 hover:-translate-y-1 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_16px_36px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_40px_rgba(6,182,212,0.15)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-cyan-400/50 before:to-transparent">
+        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/40 via-slate-900/60 to-slate-950/80 border border-white/[0.12] hover:border-cyan-400/40 hover:-translate-y-1.5 transition-all duration-300 ease-out shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_20px_48px_0_rgba(6,182,212,0.18),inset_0_1px_1px_0_rgba(255,255,255,0.25)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-cyan-400/50 before:to-transparent">
           {/* Ambient Glass Glow */}
-          <div className="absolute -top-12 -right-12 w-36 h-36 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/25 transition-all duration-500" />
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none group-hover:bg-cyan-500/25 transition-all duration-500" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10">
             {/* Header / Metric Label */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                <span className="text-[11px] font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
                   Pipeline de Captação
                 </span>
                 <span className="mt-0.5 text-[9px] font-bold uppercase font-mono tracking-wider text-cyan-400">
                   ● PROJEÇÃO COMERCIAL ({pipelineDeals.length} MANDATOS)
                 </span>
               </div>
-              <div className="p-2.5 bg-cyan-500/15 border border-cyan-400/30 rounded-xl text-cyan-300 backdrop-blur-md shadow-sm">
+              <div className="p-2.5 bg-cyan-500/15 border border-cyan-400/30 rounded-xl text-cyan-300 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] group-hover:scale-105 transition-transform">
                 <Briefcase className="w-4 h-4" />
               </div>
             </div>
@@ -484,13 +487,13 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-slate-300 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.06]">
+                <span className="text-slate-300 bg-white/[0.04] backdrop-blur-md px-2 py-0.5 rounded-md border border-white/[0.08]">
                   Ponderado: <strong className="text-cyan-300 font-mono">R$ {(pipelineWeighted / 1000000).toFixed(1)}M</strong>
                 </span>
                 <span className="text-slate-400 text-[11px] font-medium">Conv: 74%</span>
               </div>
 
-              <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.02] px-2 py-1 rounded-md border border-white/[0.04]">
+              <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.03] backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/[0.06]">
                 <span>Receita Anual Nova:</span>
                 <span className="font-bold text-emerald-400 font-mono">+R$ {(pipelineRevenueAnnual / 1000).toFixed(0)}k/ano</span>
               </div>
@@ -498,7 +501,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
           </div>
 
           {/* Docked Telemetry Chamber for Sparkline */}
-          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/60 border-t border-white/[0.08] backdrop-blur-md relative z-10">
+          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/50 border-t border-white/[0.08] backdrop-blur-md relative z-10">
             <MiniSparkline
               data={pipelineQuarterlyTrend}
               color="cyan"
@@ -510,23 +513,24 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         </div>
 
         {/* Card 4: Net New Money & Risk Exposure */}
-        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/65 via-slate-900/85 to-slate-950/95 border border-white/[0.09] hover:border-indigo-400/50 hover:-translate-y-1 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_16px_36px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_40px_rgba(99,102,241,0.15)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-indigo-400/50 before:to-transparent">
+        <div className="group relative rounded-2xl p-5 backdrop-blur-2xl bg-gradient-to-b from-slate-800/40 via-slate-900/60 to-slate-950/80 border border-white/[0.12] hover:border-indigo-400/40 hover:-translate-y-1.5 transition-all duration-300 ease-out shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_20px_48px_0_rgba(99,102,241,0.18),inset_0_1px_1px_0_rgba(255,255,255,0.25)] flex flex-col justify-between overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-indigo-400/50 before:to-transparent">
           {/* Ambient Glass Glow */}
-          <div className="absolute -top-12 -right-12 w-36 h-36 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/25 transition-all duration-500" />
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/25 transition-all duration-500" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10">
             {/* Header / Metric Label */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                <span className="text-[11px] font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.9)]" />
                   Captação Líquida (NNM) & Risco
                 </span>
                 <span className="mt-0.5 text-[9px] font-bold uppercase font-mono tracking-wider text-emerald-400">
                   ● LIVE DATA (AUDITADO)
                 </span>
               </div>
-              <div className="p-2.5 bg-indigo-500/15 border border-indigo-400/30 rounded-xl text-indigo-300 backdrop-blur-md shadow-sm">
+              <div className="p-2.5 bg-indigo-500/15 border border-indigo-400/30 rounded-xl text-indigo-300 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] group-hover:scale-105 transition-transform">
                 <Target className="w-4 h-4" />
               </div>
             </div>
@@ -539,15 +543,15 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                <span className="text-emerald-400 font-bold bg-emerald-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20">
                   Churn: 0.0%
                 </span>
-                <span className="text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
+                <span className="text-rose-400 font-bold bg-rose-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-rose-500/20">
                   Risco: R$ {(aumAtCriticalRisk / 1000000).toFixed(1)}M
                 </span>
               </div>
 
-              <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.02] px-2 py-1 rounded-md border border-white/[0.04]">
+              <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.03] backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/[0.06]">
                 <span>Conformidade AUM:</span>
                 <span className="font-semibold text-slate-200 font-mono">{complianceRateAum.toFixed(1)}%</span>
               </div>
@@ -555,7 +559,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
           </div>
 
           {/* Docked Telemetry Chamber for Sparkline */}
-          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/60 border-t border-white/[0.08] backdrop-blur-md relative z-10">
+          <div className="mt-4 -mx-5 -mb-5 p-4 rounded-b-2xl bg-slate-950/50 border-t border-white/[0.08] backdrop-blur-md relative z-10">
             <MiniSparkline
               data={nnmQuarterlyTrend}
               color="indigo"
@@ -746,8 +750,8 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         </div>
       </div>
 
-      {/* Row 3: Condensed Clients at Risk & Health Scores */}
-      <ClientsAtRiskList
+      {/* Row 3: Clients at Risk & Health Scores Executive Supervision */}
+      <ClientsAtRisk
         portfolios={portfolios}
         alerts={alerts}
         onSelectPortfolio={onSelectPortfolio}

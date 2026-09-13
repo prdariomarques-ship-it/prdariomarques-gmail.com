@@ -1,4 +1,4 @@
-import { Portfolio, AssetClass, MandateLimit, Policy } from '../types';
+import { Portfolio, AssetClass, MandateLimit, Policy, AssetClassThresholdConfig } from '../types';
 
 export const initialPolicies: Policy[] = [
   {
@@ -189,6 +189,11 @@ export const initialPortfolios: Portfolio[] = [
         currentPrice: 38.50,
         totalValue: 693000,
         allocationPercent: 14.29,
+        averagePrice: 42.00,
+        unrealizedGainBRL: -63000,
+        unrealizedGainPercent: -8.33,
+        taxRatePercent: 15,
+        isTaxExempt: false,
       },
       {
         id: 'ast-102',
@@ -199,6 +204,11 @@ export const initialPortfolios: Portfolio[] = [
         currentPrice: 62.20,
         totalValue: 684200,
         allocationPercent: 14.11,
+        averagePrice: 51.50,
+        unrealizedGainBRL: 117700,
+        unrealizedGainPercent: 20.78,
+        taxRatePercent: 15,
+        isTaxExempt: false,
       },
       {
         id: 'ast-103',
@@ -209,6 +219,11 @@ export const initialPortfolios: Portfolio[] = [
         currentPrice: 34.40,
         totalValue: 722400,
         allocationPercent: 14.89,
+        averagePrice: 33.80,
+        unrealizedGainBRL: 12600,
+        unrealizedGainPercent: 1.78,
+        taxRatePercent: 15,
+        isTaxExempt: false,
       },
       {
         id: 'ast-104',
@@ -219,6 +234,12 @@ export const initialPortfolios: Portfolio[] = [
         currentPrice: 4200.00,
         totalValue: 1470000,
         allocationPercent: 30.31,
+        averagePrice: 3950.00,
+        unrealizedGainBRL: 87500,
+        unrealizedGainPercent: 6.33,
+        holdingPeriodDays: 820,
+        taxRatePercent: 15,
+        isTaxExempt: false,
       },
       {
         id: 'ast-105',
@@ -229,6 +250,12 @@ export const initialPortfolios: Portfolio[] = [
         currentPrice: 1000.00,
         totalValue: 500000,
         allocationPercent: 10.31,
+        averagePrice: 1000.00,
+        unrealizedGainBRL: 0,
+        unrealizedGainPercent: 0,
+        holdingPeriodDays: 450,
+        taxRatePercent: 17.5,
+        isTaxExempt: false,
       },
       {
         id: 'ast-106',
@@ -239,6 +266,11 @@ export const initialPortfolios: Portfolio[] = [
         currentPrice: 365.00,
         totalValue: 657000,
         allocationPercent: 13.55,
+        averagePrice: 315.00,
+        unrealizedGainBRL: 90000,
+        unrealizedGainPercent: 15.87,
+        taxRatePercent: 15,
+        isTaxExempt: false,
       },
       {
         id: 'ast-107',
@@ -249,6 +281,11 @@ export const initialPortfolios: Portfolio[] = [
         currentPrice: 15425.00,
         totalValue: 123400,
         allocationPercent: 2.54,
+        averagePrice: 15425.00,
+        unrealizedGainBRL: 0,
+        unrealizedGainPercent: 0,
+        taxRatePercent: 15,
+        isTaxExempt: false,
       },
     ],
   },
@@ -661,10 +698,196 @@ export function resetPortfoliosRepo(): Portfolio[] {
   return storePortfolios;
 }
 
+/**
+ * Simula volatilidade súbita ou choque de mercado em uma carteira para gerar
+ * um novo alerta crítico de desenquadramento em tempo real.
+ */
+export function simulateMarketShockRepo(targetPortfolioId?: string): {
+  success: boolean;
+  portfolio: Portfolio;
+  affectedAsset: string;
+  previousPercent: number;
+  newPercent: number;
+} {
+  // Prioriza port-004 (que começa normal/enquadrada) ou a carteira solicitada
+  let target = storePortfolios.find((p) => p.id === (targetPortfolioId || 'port-004'));
+  if (!target) {
+    target = storePortfolios[0];
+  }
+
+  // Encontra ativo de renda variável ou internacional para choque de alta
+  const equityAssets = target.assets.filter((a) => a.assetClass === 'Renda Variável');
+  const targetAsset = equityAssets.length > 0 ? equityAssets[0] : target.assets[0];
+
+  const previousAllocation = targetAsset.allocationPercent;
+
+  // Aplica choque expressivo de preço (+80%) no ativo para violar o teto do mandato com folga
+  targetAsset.currentPrice = Math.round(targetAsset.currentPrice * 1.8 * 100) / 100;
+  targetAsset.totalValue = targetAsset.quantity * targetAsset.currentPrice;
+
+  // Recalcula valor total e percentuais da carteira
+  const newTotalAum = target.assets.reduce((sum, a) => sum + a.totalValue, 0);
+  target.totalAum = newTotalAum;
+  for (const a of target.assets) {
+    a.allocationPercent = Math.round((a.totalValue / newTotalAum) * 10000) / 100;
+  }
+
+  target.status = 'CRITICAL';
+  const newAllocation = targetAsset.allocationPercent;
+
+  return {
+    success: true,
+    portfolio: target,
+    affectedAsset: targetAsset.ticker,
+    previousPercent: previousAllocation,
+    newPercent: newAllocation,
+  };
+}
+
 export function getPoliciesRepo(): Policy[] {
   return storePolicies;
 }
 
 export function getPolicyByIdRepo(id: string): Policy | undefined {
   return storePolicies.find((p) => p.id === id);
+}
+
+export const defaultAssetClassThresholds: AssetClassThresholdConfig[] = [
+  {
+    assetClass: 'Renda Variável',
+    minPercent: 10,
+    targetPercent: 25,
+    maxPercent: 35,
+    warningTolerancePP: 2.0,
+    criticalTolerancePP: 5.0,
+    warningTriggerPercent: 33.0,
+    criticalTriggerPercent: 40.0,
+    sourceDescription: 'Mandato Bilateral IPS & CVM 175',
+    notes: 'Ações B3, ETFs locais, BDRs Nível I/II',
+  },
+  {
+    assetClass: 'Renda Fixa',
+    minPercent: 40,
+    targetPercent: 50,
+    maxPercent: 65,
+    warningTolerancePP: 3.0,
+    criticalTolerancePP: 5.0,
+    warningTriggerPercent: 62.0,
+    criticalTriggerPercent: 70.0,
+    sourceDescription: 'Resolução CMN 4.963 / ANBIMA',
+    notes: 'Títulos públicos federais, Debêntures incentivadas, CDBs',
+  },
+  {
+    assetClass: 'Internacional',
+    minPercent: 0,
+    targetPercent: 15,
+    maxPercent: 20,
+    warningTolerancePP: 2.0,
+    criticalTolerancePP: 5.0,
+    warningTriggerPercent: 18.0,
+    criticalTriggerPercent: 25.0,
+    sourceDescription: 'Resolução CVM 175 Anexo I (Teto Geral 20%)',
+    notes: 'ETFs globais, fundos offshore 332, ADRs',
+  },
+  {
+    assetClass: 'Multimercado',
+    minPercent: 0,
+    targetPercent: 10,
+    maxPercent: 15,
+    warningTolerancePP: 2.0,
+    criticalTolerancePP: 3.0,
+    warningTriggerPercent: 13.0,
+    criticalTriggerPercent: 18.0,
+    sourceDescription: 'Diretriz Interna de Risco & Alocação',
+    notes: 'Fundos Macro, Quantitativos, Long & Short',
+  },
+  {
+    assetClass: 'Caixa',
+    minPercent: 2,
+    targetPercent: 5,
+    maxPercent: 10,
+    warningTolerancePP: 1.0,
+    criticalTolerancePP: 2.0,
+    warningTriggerPercent: 9.0,
+    criticalTriggerPercent: 12.0,
+    sourceDescription: 'Gestão de Liquidez & Disponibilidades',
+    notes: 'Operações compromissadas overnight, CDI diário',
+  },
+];
+
+let storeAssetClassThresholds: AssetClassThresholdConfig[] = JSON.parse(
+  JSON.stringify(defaultAssetClassThresholds)
+);
+
+export function getLimitsConfigRepo(portfolioId?: string): AssetClassThresholdConfig[] {
+  if (portfolioId && portfolioId !== 'all') {
+    const portfolio = storePortfolios.find((p) => p.id === portfolioId);
+    if (portfolio && portfolio.mandateLimits.length > 0) {
+      return portfolio.mandateLimits.map((ml) => {
+        const base = storeAssetClassThresholds.find((t) => t.assetClass === ml.assetClass);
+        return {
+          assetClass: ml.assetClass,
+          minPercent: ml.minPercent,
+          targetPercent: ml.targetPercent,
+          maxPercent: ml.maxPercent,
+          warningTolerancePP: ml.warningTolerancePP ?? base?.warningTolerancePP ?? 2.0,
+          criticalTolerancePP: ml.criticalTolerancePP ?? ml.tolerancePP ?? base?.criticalTolerancePP ?? 5.0,
+          warningTriggerPercent:
+            ml.warningTriggerPercent ?? (base?.warningTriggerPercent ?? ml.maxPercent - 2.0),
+          criticalTriggerPercent:
+            ml.criticalTriggerPercent ?? (base?.criticalTriggerPercent ?? ml.maxPercent + (ml.tolerancePP ?? 5.0)),
+          sourceDescription: base?.sourceDescription,
+          notes: base?.notes,
+        };
+      });
+    }
+  }
+  return storeAssetClassThresholds;
+}
+
+export function updateLimitsConfigRepo(
+  configs: AssetClassThresholdConfig[],
+  portfolioId?: string
+): Portfolio[] {
+  // Atualiza thresholds armazenados globalmente
+  storeAssetClassThresholds = JSON.parse(JSON.stringify(configs));
+
+  // Aplica aos portfólios correspondentes
+  for (const port of storePortfolios) {
+    if (!portfolioId || portfolioId === 'all' || port.id === portfolioId) {
+      for (const cfg of configs) {
+        const existingLimit = port.mandateLimits.find((l) => l.assetClass === cfg.assetClass);
+        if (existingLimit) {
+          existingLimit.minPercent = cfg.minPercent;
+          existingLimit.targetPercent = cfg.targetPercent;
+          existingLimit.maxPercent = cfg.maxPercent;
+          existingLimit.warningTolerancePP = cfg.warningTolerancePP;
+          existingLimit.criticalTolerancePP = cfg.criticalTolerancePP;
+          existingLimit.tolerancePP = cfg.criticalTolerancePP;
+          existingLimit.warningTriggerPercent = cfg.warningTriggerPercent;
+          existingLimit.criticalTriggerPercent = cfg.criticalTriggerPercent;
+        } else {
+          port.mandateLimits.push({
+            assetClass: cfg.assetClass,
+            minPercent: cfg.minPercent,
+            targetPercent: cfg.targetPercent,
+            maxPercent: cfg.maxPercent,
+            tolerancePP: cfg.criticalTolerancePP,
+            warningTolerancePP: cfg.warningTolerancePP,
+            criticalTolerancePP: cfg.criticalTolerancePP,
+            warningTriggerPercent: cfg.warningTriggerPercent,
+            criticalTriggerPercent: cfg.criticalTriggerPercent,
+            ruleSource: 'POLITICA_INTERNA',
+          });
+        }
+      }
+    }
+  }
+
+  return storePortfolios;
+}
+
+export function resetLimitsConfigRepo(): AssetClassThresholdConfig[] {
+  storeAssetClassThresholds = JSON.parse(JSON.stringify(defaultAssetClassThresholds));
+  return storeAssetClassThresholds;
 }

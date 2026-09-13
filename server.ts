@@ -7,9 +7,21 @@ import {
   getPortfolioByIdRepo,
   updatePortfolioRepo,
   resetPortfoliosRepo,
+  simulateMarketShockRepo,
   getPoliciesRepo,
   getPolicyByIdRepo,
+  getLimitsConfigRepo,
+  updateLimitsConfigRepo,
+  resetLimitsConfigRepo,
 } from './src/server/portfolioRepo';
+import {
+  getNotificationSettingsRepo,
+  updateNotificationSettingsRepo,
+  getSecondaryDispatchLogsRepo,
+  dispatchSecondaryAlertsRepo,
+  dispatchTestSecondaryAlertRepo,
+  clearSecondaryDispatchLogsRepo,
+} from './src/server/notificationChannelsRepo';
 import { ComplianceAgent } from './src/server/complianceAgent';
 import { askComplianceAgent } from './src/server/geminiService';
 import { RebalanceOrder, RebalanceExecutionResult } from './src/types';
@@ -121,6 +133,72 @@ app.get('/api/alerts', (req, res) => {
   } catch (error) {
     console.error('Error fetching alerts:', error);
     res.status(500).json({ success: false, error: 'Falha ao calcular alertas de compliance' });
+  }
+});
+
+// Endpoint GET /api/limits/config
+// Retorna a configuração de sensibilidade dos limites por classe de ativos
+app.get('/api/limits/config', (req, res) => {
+  try {
+    const portfolioId = req.query.portfolioId as string | undefined;
+    const configs = getLimitsConfigRepo(portfolioId);
+    res.json({
+      success: true,
+      configs,
+    });
+  } catch (error) {
+    console.error('Error fetching limits config:', error);
+    res.status(500).json({ success: false, error: 'Falha ao buscar parâmetros de limites' });
+  }
+});
+
+// Endpoint POST /api/limits/config
+// Salva novas tolerâncias e percentuais de disparo de Warning e Critical por classe de ativos
+app.post('/api/limits/config', (req, res) => {
+  try {
+    const { configs, portfolioId } = req.body;
+    if (!Array.isArray(configs)) {
+      return res.status(400).json({ success: false, error: 'Array de configurações é obrigatório' });
+    }
+    const updatedPortfolios = updateLimitsConfigRepo(configs, portfolioId);
+    for (const port of updatedPortfolios) {
+      port.status = ComplianceAgent.getPortfolioOverallSeverity(port);
+    }
+    const alerts = ComplianceAgent.evaluateAllPortfolios(updatedPortfolios);
+    res.json({
+      success: true,
+      message: 'Limites e sensibilidade de compliance atualizados com sucesso.',
+      portfolios: updatedPortfolios,
+      alerts,
+      criticalCount: alerts.filter((a) => a.severity === 'CRITICAL').length,
+      warningCount: alerts.filter((a) => a.severity === 'WARNING').length,
+    });
+  } catch (error) {
+    console.error('Error updating limits config:', error);
+    res.status(500).json({ success: false, error: 'Falha ao atualizar parâmetros de limites' });
+  }
+});
+
+// Endpoint POST /api/limits/reset
+// Restaura parâmetros regulatórios padrão para classes de ativos
+app.post('/api/limits/reset', (req, res) => {
+  try {
+    const configs = resetLimitsConfigRepo();
+    const updatedPortfolios = updateLimitsConfigRepo(configs);
+    for (const port of updatedPortfolios) {
+      port.status = ComplianceAgent.getPortfolioOverallSeverity(port);
+    }
+    const alerts = ComplianceAgent.evaluateAllPortfolios(updatedPortfolios);
+    res.json({
+      success: true,
+      message: 'Parâmetros de limites restaurados para os padrões regulatórios.',
+      configs,
+      portfolios: updatedPortfolios,
+      alerts,
+    });
+  } catch (error) {
+    console.error('Error resetting limits config:', error);
+    res.status(500).json({ success: false, error: 'Falha ao restaurar parâmetros de limites' });
   }
 });
 
@@ -256,6 +334,115 @@ app.post('/api/portfolios/reset', (req, res) => {
   } catch (error) {
     console.error('Error resetting portfolios:', error);
     res.status(500).json({ success: false, error: 'Falha ao reiniciar dados' });
+  }
+});
+
+// Endpoint POST /api/portfolios/simulate-shock
+// Provoca um choque de mercado para testar a detecção em tempo real de desenquadramento crítico
+app.post('/api/portfolios/simulate-shock', (req, res) => {
+  try {
+    const portfolioId = req.body.portfolioId;
+    const shockResult = simulateMarketShockRepo(portfolioId);
+    
+    // Recalcula alertas imediatos
+    const portfolios = getPortfoliosRepo();
+    for (const port of portfolios) {
+      port.status = ComplianceAgent.getPortfolioOverallSeverity(port);
+    }
+    const alerts = ComplianceAgent.evaluateAllPortfolios(portfolios);
+
+    // Dispara canais secundários (E-mail / SMS) para os alertas críticos gerados
+    const criticals = alerts.filter((a) => a.severity === 'CRITICAL');
+    const secondaryDispatches = dispatchSecondaryAlertsRepo(criticals);
+
+    res.json({
+      success: true,
+      shock: shockResult,
+      message: `Volatilidade aplicada no ativo ${shockResult.affectedAsset} (${shockResult.portfolio.name}). Novo desenquadramento gerado.`,
+      portfolios,
+      alerts,
+      secondaryDispatches,
+    });
+  } catch (error) {
+    console.error('Error simulating market shock:', error);
+    res.status(500).json({ success: false, error: 'Falha ao simular choque de volatilidade' });
+  }
+});
+
+// ==========================================
+// NOTIFICATION CHANNELS (EMAIL & SMS) API
+// ==========================================
+
+// Endpoint GET /api/notifications/settings
+app.get('/api/notifications/settings', (req, res) => {
+  try {
+    const settings = getNotificationSettingsRepo();
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error getting notification settings:', error);
+    res.status(500).json({ success: false, error: 'Falha ao obter configurações de notificação' });
+  }
+});
+
+// Endpoint POST /api/notifications/settings
+app.post('/api/notifications/settings', (req, res) => {
+  try {
+    const updated = updateNotificationSettingsRepo(req.body);
+    res.json({ success: true, settings: updated, message: 'Configurações de canais de notificação atualizadas com sucesso' });
+  } catch (error) {
+    console.error('Error updating notification settings:', error);
+    res.status(500).json({ success: false, error: 'Falha ao salvar configurações de notificação' });
+  }
+});
+
+// Endpoint GET /api/notifications/dispatches
+app.get('/api/notifications/dispatches', (req, res) => {
+  try {
+    const logs = getSecondaryDispatchLogsRepo();
+    res.json({ success: true, logs });
+  } catch (error) {
+    console.error('Error getting notification logs:', error);
+    res.status(500).json({ success: false, error: 'Falha ao obter histórico de despachos' });
+  }
+});
+
+// Endpoint POST /api/notifications/dispatches/test
+app.post('/api/notifications/dispatches/test', (req, res) => {
+  try {
+    const { channel, recipient } = req.body;
+    const result = dispatchTestSecondaryAlertRepo(channel || 'ALL', recipient);
+    res.json(result);
+  } catch (error) {
+    console.error('Error sending test notification:', error);
+    res.status(500).json({ success: false, error: 'Falha ao enviar notificação de teste' });
+  }
+});
+
+// Endpoint POST /api/notifications/dispatches/trigger
+// Usado quando o frontend ou rotina em background detecta alertas críticos
+app.post('/api/notifications/dispatches/trigger', (req, res) => {
+  try {
+    const { alerts } = req.body;
+    if (!Array.isArray(alerts) || alerts.length === 0) {
+      return res.json({ success: true, dispatched: [] });
+    }
+    const criticals = alerts.filter((a) => a.severity === 'CRITICAL');
+    const logs = dispatchSecondaryAlertsRepo(criticals);
+    res.json({ success: true, dispatched: logs });
+  } catch (error) {
+    console.error('Error triggering secondary notifications:', error);
+    res.status(500).json({ success: false, error: 'Falha ao disparar canais secundários' });
+  }
+});
+
+// Endpoint POST /api/notifications/dispatches/clear
+app.post('/api/notifications/dispatches/clear', (req, res) => {
+  try {
+    clearSecondaryDispatchLogsRepo();
+    res.json({ success: true, message: 'Histórico de despachos limpo com sucesso' });
+  } catch (error) {
+    console.error('Error clearing notification logs:', error);
+    res.status(500).json({ success: false, error: 'Falha ao limpar histórico de despachos' });
   }
 });
 

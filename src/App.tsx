@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header, TabKey } from './components/Header';
 import { DashboardView } from './components/DashboardView';
 import { OwnerCommandCenterView } from './components/OwnerCommandCenterView';
@@ -6,8 +6,23 @@ import { AlertsView } from './components/AlertsView';
 import { PortfoliosView } from './components/PortfoliosView';
 import { RebalanceSimulatorView } from './components/RebalanceSimulatorView';
 import { AiComplianceChatView } from './components/AiComplianceChatView';
-import { Portfolio, ComplianceAlert, RebalanceExecutionResult, DataMode } from './types';
-import { RefreshCw, ShieldAlert, Sparkles, Activity, Bot } from 'lucide-react';
+import { LimitsConfigurationView } from './components/LimitsConfigurationView';
+import {
+  Portfolio,
+  ComplianceAlert,
+  RebalanceExecutionResult,
+  DataMode,
+  ComplianceNotification,
+  NotificationChannelSettings,
+  SecondaryDispatchLog,
+  AssetClassThresholdConfig,
+} from './types';
+import { initialPortfolios } from './server/portfolioRepo';
+import { ComplianceAgent } from './server/complianceAgent';
+import { RefreshCw, ShieldAlert, Sparkles, Activity, Bot, Zap, Bell, CheckCircle2, Mail, Smartphone } from 'lucide-react';
+import { NotificationToastContainer } from './components/NotificationToast';
+import { NotificationSettingsModal } from './components/NotificationSettingsModal';
+import { playCriticalAlertSound, isSoundEnabled, setSoundEnabled } from './utils/audioNotification';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
@@ -19,34 +34,303 @@ export default function App() {
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [agentInitialQuery, setAgentInitialQuery] = useState<string>('');
 
-  // Fetch data from backend
-  const fetchData = async () => {
-    try {
-      const [portsRes, alertsRes] = await Promise.all([
-        fetch('/api/portfolios'),
-        fetch('/api/alerts'),
-      ]);
-      const portsData = await portsRes.json();
-      const alertsData = await alertsRes.json();
+  // Notificações e Monitoramento em Tempo Real
+  const [notifications, setNotifications] = useState<ComplianceNotification[]>([]);
+  const [activeToasts, setActiveToasts] = useState<ComplianceNotification[]>([]);
+  const [soundEnabled, setSoundEnabledState] = useState<boolean>(isSoundEnabled);
+  const [isSimulatingShock, setIsSimulatingShock] = useState<boolean>(false);
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [lastScanTime, setLastScanTime] = useState<string>('agora');
 
-      if (portsData.success) {
+  // Canais Secundários de Notificação (E-mail e SMS)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [channelSettings, setChannelSettings] = useState<NotificationChannelSettings>({
+    email: {
+      enabled: true,
+      recipient: 'PrDariomarques@gmail.com',
+      sendOnCriticalOnly: true,
+      includeReportAttachment: true,
+    },
+    sms: {
+      enabled: true,
+      phoneNumber: '+55 (11) 98765-4321',
+      sendOnCriticalOnly: true,
+    },
+    inAppAudio: true,
+  });
+  const [dispatchLogs, setDispatchLogs] = useState<SecondaryDispatchLog[]>([]);
+
+  const seenAlertIdsRef = useRef<Set<string>>(new Set());
+  const isInitialLoadRef = useRef<boolean>(true);
+
+  // Helper para buscar e fazer parse seguro de JSON, prevenindo erros caso o servidor retorne HTML
+  const safeJsonFetch = async (url: string, init?: RequestInit) => {
+    try {
+      const res = await fetch(url, init);
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        console.warn(`[API] Resposta não-JSON recebida de ${url} (status ${res.status})`);
+        return null;
+      }
+    } catch (err) {
+      console.warn(`[API] Falha de rede ao requisitar ${url}:`, err);
+      return null;
+    }
+  };
+
+  // Carrega configurações de canais secundários do backend
+  const fetchNotificationSettings = async () => {
+    try {
+      const data = await safeJsonFetch('/api/notifications/settings');
+      if (data && data.success && data.settings) {
+        setChannelSettings(data.settings);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar configurações de canais:', e);
+    }
+  };
+
+  // Carrega histórico de despachos de canais secundários
+  const fetchDispatchLogs = async () => {
+    try {
+      const data = await safeJsonFetch('/api/notifications/dispatches');
+      if (data && data.success && data.logs) {
+        setDispatchLogs(data.logs);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar registros de despacho:', e);
+    }
+  };
+
+  // Salva configurações de canais secundários
+  const handleSaveNotificationSettings = async (newSettings: NotificationChannelSettings) => {
+    try {
+      const data = await safeJsonFetch('/api/notifications/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings),
+      });
+      if (data && data.success && data.settings) {
+        setChannelSettings(data.settings);
+      }
+    } catch (e) {
+      console.error('Erro ao salvar preferências de canais:', e);
+      throw e;
+    }
+  };
+
+  // Despacha teste sob demanda
+  const handleTestDispatch = async (channel: 'EMAIL' | 'SMS' | 'ALL', recipient?: string) => {
+    try {
+      const data = await safeJsonFetch('/api/notifications/dispatches/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, recipient }),
+      });
+      await fetchDispatchLogs();
+      return {
+        success: data?.success ?? true,
+        message: data?.message || 'Notificação de teste enviada com sucesso.',
+      };
+    } catch (e) {
+      console.error('Erro ao despachar teste:', e);
+      return {
+        success: false,
+        message: 'Falha ao conectar com o serviço de canais de notificação.',
+      };
+    }
+  };
+
+  // Limpa histórico de despachos
+  const handleClearDispatchLogs = async () => {
+    try {
+      await fetch('/api/notifications/dispatches/clear', { method: 'POST' });
+      setDispatchLogs([]);
+    } catch (e) {
+      console.error('Erro ao limpar histórico de despachos:', e);
+    }
+  };
+
+  // Processa alertas recebidos para identificar novos alertas críticos
+  const processAlertsForNotifications = (newAlerts: ComplianceAlert[], portsList: Portfolio[]) => {
+    const criticals = newAlerts.filter((a) => a.severity === 'CRITICAL');
+    const now = new Date();
+    const timeFormatted = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+
+    if (isInitialLoadRef.current) {
+      // Carga inicial: registra no histórico como já lidos e marca os IDs no Set
+      const initialNotifs: ComplianceNotification[] = criticals.map((a) => {
+        const port = portsList.find((p) => p.id === a.portfolioId);
+        seenAlertIdsRef.current.add(a.id);
+        return {
+          id: `notif-${a.id}-${Date.now()}`,
+          alertId: a.id,
+          portfolioId: a.portfolioId,
+          portfolioName: a.portfolioName,
+          portfolioCode: port?.code,
+          clientName: a.clientName,
+          assetClass: a.assetClass,
+          severity: a.severity,
+          currentPercent: a.currentPercent,
+          maxPercent: a.maxPercent,
+          minPercent: a.minPercent,
+          deviationPP: a.deviationPP,
+          excessValueBRL: a.excessValueBRL,
+          ruleSource: a.ruleSource,
+          policyId: a.policyId,
+          limit: a.limit,
+          currentValue: a.currentValue,
+          difference: a.difference,
+          rule_source: a.ruleSource,
+          policy_id: a.policyId,
+          current_value: a.currentValue,
+          mandateVsInternalExplanation: a.mandateVsInternalExplanation,
+          message: a.message,
+          suggestedAction: a.suggestedAction,
+          timestamp: timeFormatted,
+          createdAt: Date.now(),
+          read: true,
+        };
+      });
+      setNotifications(initialNotifs);
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    // Monitoramento contínuo: identifica novos alertas críticos
+    const newCriticals: ComplianceAlert[] = [];
+    for (const c of criticals) {
+      if (!seenAlertIdsRef.current.has(c.id)) {
+        newCriticals.push(c);
+        seenAlertIdsRef.current.add(c.id);
+      }
+    }
+
+    if (newCriticals.length > 0) {
+      // 🔔 Toca sinal sonoro imediatamente
+      playCriticalAlertSound();
+
+      const createdNotifs: ComplianceNotification[] = newCriticals.map((a) => {
+        const port = portsList.find((p) => p.id === a.portfolioId);
+        return {
+          id: `notif-${a.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          alertId: a.id,
+          portfolioId: a.portfolioId,
+          portfolioName: a.portfolioName,
+          portfolioCode: port?.code,
+          clientName: a.clientName,
+          assetClass: a.assetClass,
+          severity: a.severity,
+          currentPercent: a.currentPercent,
+          maxPercent: a.maxPercent,
+          minPercent: a.minPercent,
+          deviationPP: a.deviationPP,
+          excessValueBRL: a.excessValueBRL,
+          ruleSource: a.ruleSource,
+          policyId: a.policyId,
+          limit: a.limit,
+          currentValue: a.currentValue,
+          difference: a.difference,
+          rule_source: a.ruleSource,
+          policy_id: a.policyId,
+          current_value: a.currentValue,
+          mandateVsInternalExplanation: a.mandateVsInternalExplanation,
+          message: a.message,
+          suggestedAction: a.suggestedAction,
+          timestamp: timeFormatted,
+          createdAt: Date.now(),
+          read: false,
+        };
+      });
+
+      // Atualiza a lista da central de notificações e dispara o Toast flutuante imediatamente
+      setNotifications((prev) => [...createdNotifs, ...prev]);
+      setActiveToasts((prev) => [...createdNotifs, ...prev]);
+
+      // Dispara canais secundários (E-mail / SMS) no backend se configurados
+      try {
+        fetch('/api/notifications/dispatches/trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alerts: newCriticals }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && Array.isArray(data.dispatched)) {
+              setDispatchLogs((prev) => [...data.dispatched, ...prev]);
+            }
+          })
+          .catch((err) => console.error('Erro ao registrar despachos secundários:', err));
+      } catch (err) {
+        console.error('Falha ao disparar canais secundários:', err);
+      }
+    }
+  };
+
+  // Fetch data from backend with resilient fallback
+  const fetchData = async (isBackgroundPoll = false) => {
+    if (!isBackgroundPoll) {
+      setIsScanning(true);
+    }
+    try {
+      const [portsData, alertsData] = await Promise.all([
+        safeJsonFetch('/api/portfolios'),
+        safeJsonFetch('/api/alerts'),
+      ]);
+
+      let currentPorts = portfolios;
+      if (portsData && portsData.success && Array.isArray(portsData.portfolios)) {
+        currentPorts = portsData.portfolios;
         setPortfolios(portsData.portfolios);
         if (portsData.portfolios.length > 0 && !selectedPortfolioId) {
           setSelectedPortfolioId(portsData.portfolios[0].id);
         }
+      } else if (portfolios.length === 0) {
+        // Fallback robusto se o backend estiver em transição ou iniciando
+        currentPorts = initialPortfolios;
+        setPortfolios(initialPortfolios);
+        if (initialPortfolios.length > 0 && !selectedPortfolioId) {
+          setSelectedPortfolioId(initialPortfolios[0].id);
+        }
       }
-      if (alertsData.success) {
+
+      if (alertsData && alertsData.success && Array.isArray(alertsData.alerts)) {
         setAlerts(alertsData.alerts);
+        processAlertsForNotifications(alertsData.alerts, currentPorts);
+      } else if (alerts.length === 0 && currentPorts.length > 0) {
+        const computedAlerts = ComplianceAgent.evaluateAllPortfolios(currentPorts);
+        setAlerts(computedAlerts);
+        processAlertsForNotifications(computedAlerts, currentPorts);
       }
+
+      setLastScanTime(
+        new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      );
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
+      setIsScanning(false);
     }
   };
 
   useEffect(() => {
     fetchData();
+    fetchNotificationSettings();
+    fetchDispatchLogs();
+
+    // Sentinel Polling Interval: monitoramento contínuo automático a cada 12 segundos
+    const monitorInterval = setInterval(() => {
+      fetchData(true);
+    }, 12000);
+
+    return () => clearInterval(monitorInterval);
   }, []);
 
   // Reset demo data
@@ -54,11 +338,44 @@ export default function App() {
     setIsResetting(true);
     try {
       await fetch('/api/portfolios/reset', { method: 'POST' });
+      seenAlertIdsRef.current.clear();
+      isInitialLoadRef.current = true;
+      setActiveToasts([]);
       await fetchData();
     } catch (err) {
       console.error('Error resetting data:', err);
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  // Simular choque de mercado para testar a notificação em tempo real imediatamente
+  const handleSimulateShock = async () => {
+    setIsSimulatingShock(true);
+    try {
+      // Prioriza a carteira que estiver normal ou a carteira 4
+      const normalPort = portfolios.find((p) => p.status === 'NORMAL') || portfolios[0];
+      const data = await safeJsonFetch('/api/portfolios/simulate-shock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portfolioId: normalPort?.id || 'port-004' }),
+      });
+      if (data && data.success) {
+        if (data.secondaryDispatches && Array.isArray(data.secondaryDispatches)) {
+          setDispatchLogs((prev) => [...data.secondaryDispatches, ...prev]);
+        }
+        if (data.portfolios) setPortfolios(data.portfolios);
+        if (data.alerts) {
+          setAlerts(data.alerts);
+          processAlertsForNotifications(data.alerts, data.portfolios || portfolios);
+        } else {
+          await fetchData(true);
+        }
+      }
+    } catch (err) {
+      console.error('Error simulating shock:', err);
+    } finally {
+      setIsSimulatingShock(false);
     }
   };
 
@@ -87,8 +404,102 @@ export default function App() {
     setActiveTab('agent');
   };
 
+  // Handlers para o Módulo de Configuração de Limites & Tolerâncias
+  const handleUpdateLimits = async (configs: AssetClassThresholdConfig[], portfolioId?: string) => {
+    try {
+      const res = await fetch('/api/limits/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configs, portfolioId }),
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        if (Array.isArray(data.portfolios)) {
+          setPortfolios(data.portfolios);
+        }
+        if (Array.isArray(data.alerts)) {
+          setAlerts(data.alerts);
+          processAlertsForNotifications(data.alerts, data.portfolios || portfolios);
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao atualizar limites via API:', e);
+      // Fallback robusto no cliente
+      const updatedPortfolios = portfolios.map((port) => {
+        if (!portfolioId || portfolioId === 'all' || port.id === portfolioId) {
+          const cloned = { ...port, mandateLimits: [...port.mandateLimits] };
+          for (const cfg of configs) {
+            const limit = cloned.mandateLimits.find((l) => l.assetClass === cfg.assetClass);
+            if (limit) {
+              limit.minPercent = cfg.minPercent;
+              limit.targetPercent = cfg.targetPercent;
+              limit.maxPercent = cfg.maxPercent;
+              limit.warningTolerancePP = cfg.warningTolerancePP;
+              limit.criticalTolerancePP = cfg.criticalTolerancePP;
+              limit.tolerancePP = cfg.criticalTolerancePP;
+              limit.warningTriggerPercent = cfg.warningTriggerPercent;
+              limit.criticalTriggerPercent = cfg.criticalTriggerPercent;
+            }
+          }
+          return cloned;
+        }
+        return port;
+      });
+      setPortfolios(updatedPortfolios);
+      const computed = ComplianceAgent.evaluateAllPortfolios(updatedPortfolios);
+      setAlerts(computed);
+      processAlertsForNotifications(computed, updatedPortfolios);
+    }
+  };
+
+  const handleResetLimits = async () => {
+    try {
+      const res = await fetch('/api/limits/reset', { method: 'POST' });
+      const data = await res.json();
+      if (data && data.success) {
+        if (Array.isArray(data.portfolios)) {
+          setPortfolios(data.portfolios);
+        }
+        if (Array.isArray(data.alerts)) {
+          setAlerts(data.alerts);
+          processAlertsForNotifications(data.alerts, data.portfolios || portfolios);
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao restaurar limites via API:', e);
+      await fetchData();
+    }
+  };
+
+  // Handlers para o Sistema de Notificações
+  const handleDismissToast = (id: string) => {
+    setActiveToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleMarkNotificationAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleClearNotifications = () => {
+    setNotifications([]);
+    setActiveToasts([]);
+  };
+
+  const handleToggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabledState(next);
+    setSoundEnabled(next);
+  };
+
   const criticalCount = alerts.filter((a) => a.severity === 'CRITICAL').length;
   const warningCount = alerts.filter((a) => a.severity === 'WARNING').length;
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
   if (isLoading) {
     return (
@@ -105,8 +516,18 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
-      {/* Top Application Header */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200 relative">
+      {/* Toast flutuante de Notificação Imediata quando novo alerta crítico for detectado */}
+      <NotificationToastContainer
+        notifications={activeToasts}
+        onDismiss={handleDismissToast}
+        onRebalance={handleStartRebalance}
+        onViewAlerts={() => setActiveTab('alerts')}
+        soundEnabled={soundEnabled}
+        onToggleSound={handleToggleSound}
+      />
+
+      {/* Top Application Header com Sino e Central de Notificações */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -116,9 +537,24 @@ export default function App() {
         isResetting={isResetting}
         dataMode={dataMode}
         onDataModeChange={setDataMode}
+        notifications={notifications}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onMarkNotificationAsRead={handleMarkNotificationAsRead}
+        onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
+        onClearNotifications={handleClearNotifications}
+        onNotificationRebalance={handleStartRebalance}
+        onNotificationViewAlerts={() => setActiveTab('alerts')}
+        soundEnabled={soundEnabled}
+        onToggleSound={handleToggleSound}
+        onSimulateShock={handleSimulateShock}
+        isSimulatingShock={isSimulatingShock}
+        onForceScan={() => fetchData()}
+        isScanning={isScanning}
+        channelSettings={channelSettings}
+        onOpenNotificationSettings={() => setIsSettingsModalOpen(true)}
       />
 
-      {/* FLOWCORE ACTIVE: Background Agent Status Bar */}
+      {/* FLOWCORE ACTIVE: Background Agent Status Bar com Sentinela e Verificação Imediata */}
       <div className="bg-slate-950/90 border-b border-white/[0.06] px-4 sm:px-6 lg:px-8 py-2">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs gap-2">
           <div className="flex items-center space-x-2.5">
@@ -131,14 +567,65 @@ export default function App() {
               FLOWCORE ACTIVE
             </span>
             <span className="text-slate-600">|</span>
-            <span className="text-slate-300 text-[11px]">
-              ComplianceAgent Sentinel v2.4 monitorando 4 carteiras, mandatos CVM 175 e IPS em tempo real.
+            <span className="text-slate-300 text-[11px] hidden sm:inline">
+              Sentinel v2.4 monitorando 4 carteiras, mandatos CVM 175 e IPS com alerta imediato ativo.
             </span>
           </div>
 
           <div className="flex items-center space-x-3 text-[11px]">
+            {/* Quick button to manage Secondary Notification Channels (Email/SMS) */}
+            <button
+              id="open-channel-settings-bar-btn"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer text-[11px]"
+              title="Configurar canais secundários de notificação (E-mail & SMS)"
+            >
+              <div className="flex items-center gap-1">
+                <span className={channelSettings.email.enabled ? 'text-sky-400' : 'text-slate-500'}>
+                  <Mail className="w-3.5 h-3.5" />
+                </span>
+                <span className={channelSettings.sms.enabled ? 'text-amber-400' : 'text-slate-500'}>
+                  <Smartphone className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <span className="hidden md:inline text-slate-300 font-medium">Canais:</span>
+              <span className="font-semibold text-emerald-400">
+                {(channelSettings.email.enabled ? 1 : 0) + (channelSettings.sms.enabled ? 1 : 0)} ativos
+              </span>
+            </button>
+
+            <span className="text-slate-600 hidden sm:inline">•</span>
+
             <span className="text-slate-400">
-              Modo Atual:
+              Última varredura: <span className="text-slate-200 font-mono font-medium">{lastScanTime}</span>
+            </span>
+
+            <button
+              onClick={() => fetchData()}
+              disabled={isScanning}
+              className="inline-flex items-center gap-1 text-slate-400 hover:text-emerald-400 font-medium transition cursor-pointer disabled:opacity-50"
+              title="Executar varredura do Sentinel agora"
+            >
+              <RefreshCw className={`w-3 h-3 ${isScanning ? 'animate-spin text-emerald-400' : ''}`} />
+              <span>{isScanning ? 'Verificando...' : 'Varredura'}</span>
+            </button>
+
+            <span className="text-slate-600 hidden sm:inline">•</span>
+
+            <button
+              onClick={handleSimulateShock}
+              disabled={isSimulatingShock}
+              className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 font-semibold transition cursor-pointer disabled:opacity-50 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 hover:bg-rose-500/20"
+              title="Gera um choque de volatilidade em tempo real para disparar a notificação imediata na interface"
+            >
+              <Zap className={`w-3 h-3 ${isSimulatingShock ? 'animate-bounce' : ''}`} />
+              <span>Simular Alerta Crítico</span>
+            </button>
+
+            <span className="text-slate-600 hidden sm:inline">•</span>
+
+            <span className="text-slate-400">
+              Modo:
               <strong className={`ml-1 px-2 py-0.5 rounded font-mono font-bold ${
                 dataMode === 'LIVE'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -149,8 +636,6 @@ export default function App() {
                 {dataMode === 'LIVE' ? 'LIVE DATA' : dataMode === 'SIMULATION' ? 'SIMULAÇÃO' : 'PROJEÇÃO'}
               </strong>
             </span>
-            <span className="text-slate-600 hidden sm:inline">•</span>
-            <span className="text-slate-400 hidden sm:inline">Última checagem: <span className="text-slate-200 font-mono">agora</span></span>
           </div>
         </div>
       </div>
@@ -224,6 +709,15 @@ export default function App() {
             initialQuery={agentInitialQuery}
           />
         )}
+
+        {activeTab === 'limits' && (
+          <LimitsConfigurationView
+            portfolios={portfolios}
+            onUpdateLimits={handleUpdateLimits}
+            onResetLimits={handleResetLimits}
+            currentAlerts={alerts}
+          />
+        )}
       </main>
 
       {/* Footer */}
@@ -241,6 +735,18 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Modal de Configuração de Canais Secundários de Alerta (E-mail & SMS) */}
+      <NotificationSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        settings={channelSettings}
+        onSaveSettings={handleSaveNotificationSettings}
+        dispatchLogs={dispatchLogs}
+        onRefreshLogs={fetchDispatchLogs}
+        onClearLogs={handleClearDispatchLogs}
+        onTestDispatch={handleTestDispatch}
+      />
     </div>
   );
 }

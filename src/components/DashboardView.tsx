@@ -11,9 +11,17 @@ import {
   Clock,
   Award,
   Sparkles,
+  Download,
+  Scroll,
+  Building,
+  Scale,
 } from 'lucide-react';
 import { Portfolio, ComplianceAlert, AiExplanation } from '../types';
 import { AIInsightCard } from './AIInsightCard';
+import { ComplianceBreachHistoryChart } from './ComplianceBreachHistoryChart';
+import { AssetClassFilterBar } from './AssetClassFilterBar';
+import { PortfolioSectorRiskHeatmap } from './PortfolioSectorRiskHeatmap';
+import { downloadPortfolioComplianceReportCSV } from '../utils/csvExport';
 
 interface DashboardViewProps {
   portfolios: Portfolio[];
@@ -31,6 +39,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onStartRebalance,
 }) => {
   const [aiInsightTab, setAiInsightTab] = useState<'COMPLIANCE' | 'OPPORTUNITIES'>('COMPLIANCE');
+  const [showAllComplianceInsights, setShowAllComplianceInsights] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [selectedAssetClass, setSelectedAssetClass] = useState<string>('ALL');
+  const [selectedPortfolioForHeatmap, setSelectedPortfolioForHeatmap] = useState<string>(() => {
+    const crit = portfolios.find((p) => p.status === 'CRITICAL');
+    return crit ? crit.id : portfolios[0]?.id || '';
+  });
+
+  const handleDownloadReport = () => {
+    setIsExporting(true);
+    try {
+      downloadPortfolioComplianceReportCSV(portfolios, alerts);
+    } catch (error) {
+      console.error('Erro ao gerar relatório CSV de conformidade:', error);
+    } finally {
+      setTimeout(() => {
+        setIsExporting(false);
+      }, 1500);
+    }
+  };
 
   const totalAum = portfolios.reduce((sum, p) => sum + p.totalAum, 0);
   const criticalAlerts = alerts.filter((a) => a.severity === 'CRITICAL');
@@ -61,6 +89,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
+            <button
+              id="download-compliance-report-btn"
+              onClick={handleDownloadReport}
+              disabled={isExporting}
+              title="Exportar sumário de conformidade das carteiras em arquivo CSV"
+              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-sm border border-emerald-500/50 cursor-pointer disabled:opacity-50"
+            >
+              <Download className={`w-3.5 h-3.5 mr-1.5 ${isExporting ? 'animate-bounce' : ''}`} />
+              <span>{isExporting ? 'Gerando CSV...' : 'Download Report'}</span>
+            </button>
+
             <button
               onClick={() => onNavigateTab('owner')}
               className="inline-flex items-center px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold transition shadow-sm"
@@ -251,6 +290,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* FILTRO INTERATIVO POR CLASSE DE ATIVOS (RENDA FIXA, AÇÕES, MULTIMERCADO, INTERNACIONAL, CAIXA) */}
+      <AssetClassFilterBar
+        selectedAssetClass={selectedAssetClass}
+        onSelectAssetClass={setSelectedAssetClass}
+        alerts={alerts}
+        portfolios={portfolios}
+      />
+
+      {/* HISTÓRICO DE DESENQUADRAMENTOS & VOLATILIDADE (30 DIAS) COM RECHARTS */}
+      <ComplianceBreachHistoryChart
+        portfolios={portfolios}
+        alerts={alerts}
+        onSelectPortfolio={onSelectPortfolio}
+        onStartRebalance={onStartRebalance}
+        selectedAssetClass={selectedAssetClass}
+        onSelectAssetClass={setSelectedAssetClass}
+      />
+
       {/* FLOWCORE AI INSIGHT ENGINE: Prescriptive Intelligence in 6 Pillars */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
@@ -290,49 +347,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Oportunidades de Carteira (2)</span>
+              <span>Oportunidades de Carteira (4)</span>
             </button>
           </div>
         </div>
 
         {/* Insight Cards Grid */}
         {aiInsightTab === 'COMPLIANCE' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {alerts.slice(0, 2).map((alert) => (
-              <AIInsightCard
-                key={alert.id}
-                id={`insight-${alert.id}`}
-                insight={
-                  alert.aiExplanation || {
-                    what: `A exposição em ${alert.assetClass} atingiu ${alert.currentValue.toFixed(1)}%, ultrapassando o limite normativo de ${alert.limit.toFixed(1)}% em +${alert.difference.toFixed(1)} p.p. (Excesso: R$ ${alert.excessValueBRL.toLocaleString('pt-BR')}).`,
-                    why: `Variação acumulada de mercado e valorização relativa dos ativos da classe sem rebalanceamento de caixa recente.`,
-                    impact: `${alert.ruleSource === 'MANDATO_CLIENTE' ? 'Violação formal de mandato bilateral do cliente.' : 'Desvio de diretriz interna da gestora.'} Risco regulatório perante CVM 175.`,
-                    action: `${alert.suggestedAction} (Volume sugerido: R$ ${alert.recommendedTradeValue.toLocaleString('pt-BR')}).`,
-                    confidence: alert.severity === 'CRITICAL' ? 98 : 92,
-                    source: `${alert.ruleSource} • Política ${alert.policyId} • Resolução CVM 175 Anexo I`,
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {(showAllComplianceInsights ? alerts : alerts.slice(0, 2)).map((alert) => (
+                <AIInsightCard
+                  key={alert.id}
+                  id={`insight-${alert.id}`}
+                  insight={
+                    alert.aiExplanation || {
+                      what: `A exposição em ${alert.assetClass} atingiu ${alert.currentValue.toFixed(1)}%, ultrapassando o limite normativo de ${alert.limit.toFixed(1)}% em +${alert.difference.toFixed(1)} p.p. (Excesso: R$ ${alert.excessValueBRL.toLocaleString('pt-BR')}).`,
+                      why: `Variação acumulada de mercado e valorização relativa dos ativos da classe sem rebalanceamento de caixa recente.`,
+                      impact: `${alert.ruleSource === 'MANDATO_CLIENTE' ? 'Violação formal de mandato bilateral do cliente.' : 'Desvio de diretriz interna da gestora.'} Risco regulatório perante CVM 175.`,
+                      action: `${alert.suggestedAction} (Volume sugerido: R$ ${alert.recommendedTradeValue.toLocaleString('pt-BR')}).`,
+                      confidence: alert.severity === 'CRITICAL' ? 98 : 92,
+                      source: `${alert.ruleSource} • Política ${alert.policyId} • Resolução CVM 175 Anexo I`,
+                    }
                   }
-                }
-                title={`Recomendação de Compliance • ${alert.portfolioName}`}
-                subtitle={`Titular: ${alert.clientName} • Classe: ${alert.assetClass}`}
-                category="COMPLIANCE"
-                severity={alert.severity}
-                ruleSource={alert.ruleSource}
-                policyId={alert.policyId}
-                limit={alert.limit}
-                currentValue={alert.currentValue}
-                difference={alert.difference}
-                mandateVsInternalExplanation={alert.mandateVsInternalExplanation}
-                portfolioName={alert.portfolioName}
-                clientName={alert.clientName}
-                onApplyAction={() => onStartRebalance(alert.portfolioId)}
-                actionLabel="Simular Rebalanceamento"
-                collapsible={true}
-                defaultExpanded={true}
-              />
-            ))}
+                  title={`Recomendação de Compliance • ${alert.portfolioName}`}
+                  subtitle={`Titular: ${alert.clientName} • Classe: ${alert.assetClass}`}
+                  category="COMPLIANCE"
+                  severity={alert.severity}
+                  ruleSource={alert.ruleSource}
+                  rule_source={alert.ruleSource}
+                  policyId={alert.policyId}
+                  policy_id={alert.policyId}
+                  limit={alert.limit}
+                  currentValue={alert.currentValue}
+                  current_value={alert.currentValue}
+                  difference={alert.difference}
+                  mandateVsInternalExplanation={alert.mandateVsInternalExplanation}
+                  portfolioName={alert.portfolioName}
+                  clientName={alert.clientName}
+                  onApplyAction={() => onStartRebalance(alert.portfolioId)}
+                  actionLabel="Simular Rebalanceamento"
+                  collapsible={true}
+                  defaultExpanded={true}
+                />
+              ))}
+            </div>
+
+            {alerts.length > 2 && (
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAllComplianceInsights(!showAllComplianceInsights)}
+                  className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700/80 transition shadow-sm flex items-center gap-2 cursor-pointer"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                  <span>
+                    {showAllComplianceInsights
+                      ? 'Mostrar apenas principais (2 alertas)'
+                      : `Ver todas as ${alerts.length} recomendações de compliance estruturadas`}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* OPORTUNIDADE 1 */}
             <AIInsightCard
               id="opportunity-cash-yield"
               insight={{
@@ -347,6 +427,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               subtitle="Carteira Pedro Henrique Silveira • Perfil Moderado"
               category="OPPORTUNITY"
               severity="INFO"
+              ruleSource="MANDATO_CLIENTE"
+              rule_source="MANDATO_CLIENTE"
+              policyId="IPS-PHS-2024"
+              policy_id="IPS-PHS-2024"
               portfolioName="Pedro Henrique Silveira"
               clientName="Pedro Henrique Silveira"
               onApplyAction={() => onSelectPortfolio('port-002')}
@@ -355,6 +439,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               defaultExpanded={true}
             />
 
+            {/* OPORTUNIDADE 2 */}
             <AIInsightCard
               id="opportunity-tax-efficiency"
               insight={{
@@ -365,10 +450,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 confidence: 93,
                 source: 'Política IPS-CM-002 • Diretrizes ANBIMA de Gestão de Liquidez & Renda Fixa',
               }}
-              title="Otimização Tributária & Ganho de Curva"
+              title="Otimização Tributária & Ganho de Curva Pré"
               subtitle="Carteira Clara Mendes • Perfil Conservador"
               category="OPPORTUNITY"
               severity="INFO"
+              ruleSource="POLITICA_INTERNA"
+              rule_source="POLITICA_INTERNA"
+              policyId="POL-CR-04"
+              policy_id="POL-CR-04"
               portfolioName="Clara Mendes"
               clientName="Clara Mendes"
               onApplyAction={() => onSelectPortfolio('port-003')}
@@ -376,9 +465,75 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               collapsible={true}
               defaultExpanded={true}
             />
+
+            {/* OPORTUNIDADE 3 */}
+            <AIInsightCard
+              id="opportunity-credit-arbitrage"
+              insight={{
+                what: 'Spread atípico de +115 bps acima da NTN-B de referência em Debêntures Incentivadas AAA de infraestrutura com isenção fiscal para Roberto Matos.',
+                why: 'Emissão primária com sobreoferta institucional de lote de energia gerou taxa líquida equivalente a 142% do CDI para pessoa física.',
+                impact: 'Ganho líquido anual adicional projetado em R$ 94.200 em relação a fundos DI com come-cotas, mantendo rating de crédito AAA.',
+                action: 'Substituir R$ 650.000 de LFT (Tesouro Selic) por lote primário de Debêntures Incentivadas AAA com duration de 4.2 anos.',
+                confidence: 95,
+                source: 'Lei nº 12.431/2011 (art. 2º) • Política Interna de Crédito Privado POL-RF-09 • Resolução CVM 175',
+              }}
+              title="Arbitragem de Spread em Crédito Isento (AAA)"
+              subtitle="Carteira Roberto Matos • Perfil Private Wealth"
+              category="OPPORTUNITY"
+              severity="INFO"
+              ruleSource="POLITICA_INTERNA"
+              rule_source="POLITICA_INTERNA"
+              policyId="POL-RF-09"
+              policy_id="POL-RF-09"
+              portfolioName="Roberto Matos"
+              clientName="Roberto Matos"
+              onApplyAction={() => onSelectPortfolio('port-005')}
+              actionLabel="Ver Carteira & Alocar"
+              collapsible={true}
+              defaultExpanded={true}
+            />
+
+            {/* OPORTUNIDADE 4 */}
+            <AIInsightCard
+              id="opportunity-fii-discount"
+              insight={{
+                what: 'Desconto patrimonial de 14.8% (P/VP 0.852) em Fundos Imobiliários Prime de galpões logísticos com vacância zero na carteira de Mariana Rios.',
+                why: 'Volatilidade momentânea de juros futuros na B3 abriu spread incomum entre a cota negociada em bolsa e o laudo de avaliação dos galpões.',
+                impact: 'Dividend yield isento anualizado projetado em 10.1% a.a. somado ao potencial de valorização de +14% na reprecificação do P/VP para 1.00.',
+                action: 'Rebalancear R$ 420.000 do excedente de liquidez conservadora para compras fracionadas em 2 FIIs de logística grau de investimento.',
+                confidence: 92,
+                source: 'Lei nº 8.668/1993 (art. 16-A) • Mandato Bilateral IPS-MR-2023 • Resolução CVM 175',
+              }}
+              title="Rebalanceamento Tático em FIIs com Desconto P/VP"
+              subtitle="Carteira Mariana Rios • Perfil Offshore & FIIs"
+              category="OPPORTUNITY"
+              severity="INFO"
+              ruleSource="MANDATO_CLIENTE"
+              rule_source="MANDATO_CLIENTE"
+              policyId="IPS-MR-2023"
+              policy_id="IPS-MR-2023"
+              portfolioName="Mariana Rios"
+              clientName="Mariana Rios"
+              onApplyAction={() => onSelectPortfolio('port-004')}
+              actionLabel="Inspecionar Posições"
+              collapsible={true}
+              defaultExpanded={true}
+            />
           </div>
         )}
       </div>
+
+      {/* MAPA DE CALOR DE RISCO SETORIAL & PROXIMIDADE REGULATÓRIA (CVM 175 • CMN 4.963 • IPS) */}
+      <PortfolioSectorRiskHeatmap
+        portfolios={portfolios}
+        alerts={alerts}
+        selectedPortfolioId={selectedPortfolioForHeatmap}
+        onSelectPortfolio={(id) => {
+          setSelectedPortfolioForHeatmap(id);
+          onSelectPortfolio(id);
+        }}
+        onStartRebalance={onStartRebalance}
+      />
 
       {/* Main Grid: Alertas Recentes & Carteiras */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -412,19 +567,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-3">
               {alerts.slice(0, 4).map((alert) => {
                 const isCritical = alert.severity === 'CRITICAL';
+                const effectiveRuleSource = alert.rule_source ?? alert.ruleSource;
+                const effectivePolicyId = alert.policy_id ?? alert.policyId;
+                const effectiveLimit = alert.limit;
+                const effectiveCurrentValue = alert.current_value ?? alert.currentValue;
+                const isMandate = effectiveRuleSource === 'MANDATO_CLIENTE';
+                const isInternal = effectiveRuleSource === 'POLITICA_INTERNA';
+                const isRegulatory = effectiveRuleSource === 'REGRA_REGULATORIA';
+
                 return (
                   <div
                     key={alert.id}
-                    className={`p-4 rounded-xl border transition ${
-                      isCritical
+                    className={`p-4 rounded-xl border transition shadow-sm ${
+                      isMandate
+                        ? 'bg-purple-950/20 border-purple-800/50 hover:border-purple-600/70 border-l-4 border-l-purple-500 shadow-purple-950/20'
+                        : isInternal
+                        ? 'bg-indigo-950/20 border-indigo-800/50 hover:border-indigo-600/70 border-l-4 border-l-indigo-500 shadow-indigo-950/20'
+                        : isRegulatory
+                        ? 'bg-rose-950/20 border-rose-800/50 hover:border-rose-600/70 border-l-4 border-l-rose-500 shadow-rose-950/20'
+                        : isCritical
                         ? 'bg-rose-950/20 border-rose-800/40 hover:border-rose-700/60'
                         : 'bg-amber-950/20 border-amber-800/40 hover:border-amber-700/60'
                     }`}
                   >
+                    {/* Visual Distinction Header Ribbon: Mandate vs Internal */}
+                    <div className="flex items-center justify-between text-[11px] pb-2 mb-2 border-b border-white/[0.08]">
+                      <div className="flex items-center space-x-1.5 font-bold">
+                        {isMandate ? (
+                          <>
+                            <Scroll className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                            <span className="text-purple-300">📜 VIOLAÇÃO DE MANDATO DO CLIENTE (IPS BILATERAL)</span>
+                          </>
+                        ) : isInternal ? (
+                          <>
+                            <Building className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span className="text-indigo-300">🏛️ DESVIO DE POLÍTICA INTERNA DA GESTORA</span>
+                          </>
+                        ) : (
+                          <>
+                            <Scale className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                            <span className="text-rose-300">⚖️ ENQUADRAMENTO REGULATÓRIO CVM</span>
+                          </>
+                        )}
+                      </div>
+                      <span
+                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase border shrink-0 ${
+                          isMandate
+                            ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
+                            : isInternal
+                            ? 'bg-indigo-500/20 text-indigo-200 border-indigo-500/40'
+                            : 'bg-rose-500/20 text-rose-200 border-rose-500/40'
+                        }`}
+                      >
+                        {isMandate ? 'Risco Fiduciário Direto' : isInternal ? 'Governança Institucional' : 'Regulatório CVM'}
+                      </span>
+                    </div>
+
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center space-x-2.5 flex-wrap gap-y-1">
+                      <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                         <span
-                          className={`px-2.5 py-0.5 rounded text-xs font-bold tracking-wide ${
+                          className={`px-2 py-0.5 rounded text-xs font-bold tracking-wide ${
                             isCritical
                               ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                               : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
@@ -436,23 +638,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {alert.portfolioName}
                         </h4>
                         <span className="text-xs text-slate-400">({alert.clientName})</span>
-                        
-                        {/* Explicit rule_source badge */}
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                          alert.ruleSource === 'MANDATO_CLIENTE'
-                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                            : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                        }`}>
-                          rule_source: {alert.ruleSource}
-                        </span>
-
-                        {/* Explicit policy_id badge */}
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-                          policy_id: {alert.policyId}
-                        </span>
                       </div>
                       <div className="text-xs font-semibold text-slate-300">
-                        Classe: <span className="text-white">{alert.assetClass}</span>
+                        Classe: <span className="text-white font-bold">{alert.assetClass}</span>
                       </div>
                     </div>
 
@@ -462,40 +650,85 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     {/* Contextual difference pill between client mandate and internal policy */}
                     <div className="mt-2 text-[11px] p-2 rounded-lg bg-black/40 border border-white/[0.06] text-slate-300 flex items-start space-x-2">
-                      <span className="font-bold text-cyan-400 uppercase font-mono text-[10px] shrink-0 mt-0.5">
-                        {alert.ruleSource === 'MANDATO_CLIENTE' ? '📜 Mandato Bilateral:' : '🏛️ Política Interna:'}
+                      <span className="font-bold uppercase font-mono text-[10px] shrink-0 mt-0.5 text-cyan-400">
+                        {isMandate ? '📜 Mandato Bilateral:' : isInternal ? '🏛️ Política Interna:' : '⚖️ Norma CVM:'}
                       </span>
                       <span className="leading-snug">
-                        {alert.mandateVsInternalExplanation || (alert.ruleSource === 'MANDATO_CLIENTE' 
-                          ? 'Cláusula do contrato de gestão firmado com o cliente. Desenquadramento gera risco fiduciário direto.' 
-                          : 'Parâmetro prudencial da gestora para mitigar risco global, sem violação direta de contrato bilateral.')}
+                        {alert.mandateVsInternalExplanation || (isMandate 
+                          ? 'Cláusula do contrato de gestão individual firmado com o cliente investidor. O descumprimento gera risco fiduciário individual perante o titular.' 
+                          : isInternal
+                          ? 'Diretriz prudencial do Comitê de Risco e Alocação da gestora para salvaguardar a instituição. Não fere diretamente o contrato do investidor.'
+                          : 'Parâmetro de observância regulatória compulsória.')}
                       </span>
                     </div>
 
-                    {/* Allocation metrics comparison: limit vs current_value */}
-                    <div className="mt-3 flex flex-wrap items-center gap-3 py-2 px-3 bg-slate-950/60 rounded-lg border border-slate-800/80 text-xs">
+                    {/* Distinct 4-Field Audit Grid: rule_source, policy_id, limit, current_value */}
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-slate-950/90 rounded-lg border border-white/[0.08] text-xs">
                       <div>
-                        <span className="text-slate-400 font-mono text-[11px]">current_value:</span>{' '}
-                        <strong className={isCritical ? 'text-rose-400 font-mono' : 'text-amber-400 font-mono'}>
-                          {alert.currentValue.toFixed(1)}%
-                        </strong>
+                        <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">
+                          rule_source
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded text-[11px] font-mono font-bold border ${
+                            isMandate
+                              ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
+                              : isInternal
+                              ? 'bg-indigo-500/20 text-indigo-200 border-indigo-500/40'
+                              : 'bg-rose-500/20 text-rose-200 border-rose-500/40'
+                          }`}
+                        >
+                          {isMandate && <Scroll className="w-3 h-3 text-purple-400" />}
+                          {isInternal && <Building className="w-3 h-3 text-indigo-400" />}
+                          {isRegulatory && <Scale className="w-3 h-3 text-rose-400" />}
+                          <span>{effectiveRuleSource}</span>
+                        </span>
                       </div>
-                      <span className="text-slate-700">•</span>
+
                       <div>
-                        <span className="text-slate-400 font-mono text-[11px]">limit:</span>{' '}
-                        <strong className="text-slate-200 font-mono">{alert.limit.toFixed(1)}%</strong>
+                        <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">
+                          policy_id
+                        </span>
+                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-slate-800/90 text-slate-200 border border-white/[0.08]">
+                          {effectivePolicyId}
+                        </span>
                       </div>
-                      <span className="text-slate-700">•</span>
+
                       <div>
-                        <span className="text-slate-400 font-mono text-[11px]">desvio:</span>{' '}
-                        <strong className={isCritical ? 'text-rose-400 font-mono' : 'text-amber-400 font-mono'}>
+                        <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">
+                          limit
+                        </span>
+                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-800/90 text-slate-200 border border-white/[0.08]">
+                          {effectiveLimit.toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">
+                          current_value
+                        </span>
+                        <span
+                          className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[11px] font-mono font-extrabold border ${
+                            isCritical
+                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          }`}
+                        >
+                          {effectiveCurrentValue.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Allocation metrics comparison: desvio e excesso */}
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-950/60 rounded-lg border border-slate-800/80 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 font-mono text-[11px]">desvio apurado:</span>
+                        <strong className={isCritical ? 'text-rose-400 font-mono font-bold' : 'text-amber-400 font-mono font-bold'}>
                           +{alert.difference.toFixed(1)} p.p.
                         </strong>
                       </div>
-                      <span className="text-slate-700">•</span>
-                      <div>
-                        <span className="text-slate-400">Excesso Estimado:</span>{' '}
-                        <strong className="text-emerald-400 font-mono">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 text-[11px]">Excesso Estimado:</span>
+                        <strong className="text-emerald-400 font-mono font-bold">
                           R$ {alert.excessValueBRL.toLocaleString('pt-BR')}
                         </strong>
                       </div>
@@ -528,12 +761,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <TrendingUp className="w-4 h-4 text-emerald-400" />
               Carteiras Monitoradas
             </h3>
-            <button
-              onClick={() => onNavigateTab('portfolios')}
-              className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center font-medium transition"
-            >
-              Ver todas <ArrowRight className="w-3 h-3 ml-1" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                id="download-portfolios-csv-btn"
+                onClick={handleDownloadReport}
+                disabled={isExporting}
+                title="Download Report (CSV)"
+                className="text-xs text-slate-300 hover:text-white flex items-center gap-1 font-medium transition px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 cursor-pointer disabled:opacity-50"
+              >
+                <Download className="w-3 h-3 text-emerald-400" />
+                <span>CSV</span>
+              </button>
+              <button
+                onClick={() => onNavigateTab('portfolios')}
+                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center font-medium transition"
+              >
+                Ver todas <ArrowRight className="w-3 h-3 ml-1" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2.5">

@@ -3,6 +3,7 @@ import {
   ShieldAlert,
   PieChart,
   Sliders,
+  SlidersHorizontal,
   Sparkles,
   RefreshCw,
   FolderOpen,
@@ -12,9 +13,17 @@ import {
   Activity,
   Cpu,
 } from 'lucide-react';
-import { DataMode } from '../types';
+import { DataMode, ComplianceNotification, NotificationChannelSettings } from '../types';
+import { NotificationCenterDropdown } from './NotificationCenterDropdown';
 
-export type TabKey = 'dashboard' | 'owner' | 'alerts' | 'portfolios' | 'simulator' | 'agent';
+export type TabKey =
+  | 'dashboard'
+  | 'owner'
+  | 'alerts'
+  | 'portfolios'
+  | 'simulator'
+  | 'agent'
+  | 'limits';
 
 interface HeaderProps {
   activeTab: TabKey;
@@ -25,6 +34,22 @@ interface HeaderProps {
   isResetting: boolean;
   dataMode: DataMode;
   setDataMode: (mode: DataMode) => void;
+  // Notificações de monitoramento Sentinel
+  notifications: ComplianceNotification[];
+  unreadNotificationsCount: number;
+  onMarkNotificationAsRead: (id: string) => void;
+  onMarkAllNotificationsAsRead: () => void;
+  onClearNotifications: () => void;
+  onNotificationRebalance: (portfolioId: string) => void;
+  onNotificationViewAlerts: () => void;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
+  onSimulateShock: () => Promise<void>;
+  isSimulatingShock: boolean;
+  onForceScan: () => Promise<void>;
+  isScanning: boolean;
+  channelSettings?: NotificationChannelSettings;
+  onOpenNotificationSettings: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,6 +61,21 @@ export const Header: React.FC<HeaderProps> = ({
   isResetting,
   dataMode,
   setDataMode,
+  notifications,
+  unreadNotificationsCount,
+  onMarkNotificationAsRead,
+  onMarkAllNotificationsAsRead,
+  onClearNotifications,
+  onNotificationRebalance,
+  onNotificationViewAlerts,
+  soundEnabled,
+  onToggleSound,
+  onSimulateShock,
+  isSimulatingShock,
+  onForceScan,
+  isScanning,
+  channelSettings,
+  onOpenNotificationSettings,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white shadow-md">
@@ -116,12 +156,31 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons & Notification Bell */}
           <div className="flex items-center space-x-2">
+            {/* Notification Center Bell & Dropdown */}
+            <NotificationCenterDropdown
+              notifications={notifications}
+              unreadCount={unreadNotificationsCount}
+              onMarkAsRead={onMarkNotificationAsRead}
+              onMarkAllAsRead={onMarkAllNotificationsAsRead}
+              onClearAll={onClearNotifications}
+              onRebalance={onNotificationRebalance}
+              onViewAlerts={onNotificationViewAlerts}
+              soundEnabled={soundEnabled}
+              onToggleSound={onToggleSound}
+              onSimulateShock={onSimulateShock}
+              isSimulatingShock={isSimulatingShock}
+              onForceScan={onForceScan}
+              isScanning={isScanning}
+              channelSettings={channelSettings}
+              onOpenSettings={onOpenNotificationSettings}
+            />
+
             <button
               onClick={onResetData}
               disabled={isResetting}
-              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition"
+              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition cursor-pointer"
               title="Restaurar dados iniciais para testes"
             >
               <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isResetting ? 'animate-spin' : ''}`} />
@@ -209,6 +268,19 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Sparkles className="w-4 h-4 mr-2 text-cyan-400" />
             Agente IA FlowCore
+          </button>
+
+          <button
+            id="header-tab-limits"
+            onClick={() => setActiveTab('limits')}
+            className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition whitespace-nowrap ${
+              activeTab === 'limits'
+                ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4 mr-2 text-emerald-400" />
+            Configuração de Limites
           </button>
         </div>
       </div>

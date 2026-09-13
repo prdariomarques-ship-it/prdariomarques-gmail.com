@@ -12,6 +12,7 @@ import {
   TrendingDown,
   TrendingUp,
   FileCheck,
+  Calculator,
 } from 'lucide-react';
 import {
   Portfolio,
@@ -19,7 +20,10 @@ import {
   RebalanceOrder,
   AssetClass,
   RebalanceExecutionResult,
+  TaxStrategy,
 } from '../types';
+import { ComplianceAgent } from '../server/complianceAgent';
+import { TaxOptimizationAssistant } from './TaxOptimizationAssistant';
 
 interface RebalanceSimulatorViewProps {
   portfolios: Portfolio[];
@@ -41,6 +45,8 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<RebalanceExecutionResult | null>(null);
+  const [showTaxAssistant, setShowTaxAssistant] = useState(true);
+  const [appliedTaxStrategy, setAppliedTaxStrategy] = useState<TaxStrategy | null>(null);
 
   // New order form state
   const [newAssetId, setNewAssetId] = useState('');
@@ -54,12 +60,27 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
     setExecutionResult(null);
     try {
       const res = await fetch(`/api/portfolios/${currentPortfolio.id}/rebalance-plan`);
-      const data = await res.json();
-      if (data.success && data.orders) {
+      const text = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // Fallback local se backend retornar não-JSON
+        data = null;
+      }
+
+      if (data && data.success && data.orders) {
         setOrders(data.orders);
+      } else {
+        // Fallback via ComplianceAgent local
+        const localPlan = ComplianceAgent.generateRebalancePlan(currentPortfolio);
+        setOrders(localPlan);
       }
     } catch (err) {
       console.error('Error loading rebalance plan:', err);
+      if (currentPortfolio) {
+        setOrders(ComplianceAgent.generateRebalancePlan(currentPortfolio));
+      }
     } finally {
       setIsLoadingPlan(false);
     }
@@ -164,8 +185,14 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders }),
       });
-      const data: RebalanceExecutionResult = await res.json();
-      if (data.success) {
+      const text = await res.text();
+      let data: RebalanceExecutionResult | null = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+      if (data && data.success) {
         setExecutionResult(data);
         onRebalanceExecuted(data);
       }
@@ -178,6 +205,15 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
 
   const totalSellBRL = orders.filter((o) => o.action === 'SELL').reduce((s, o) => s + o.totalAmountBRL, 0);
   const totalBuyBRL = orders.filter((o) => o.action === 'BUY').reduce((s, o) => s + o.totalAmountBRL, 0);
+
+  // Aplicação da sugestão gerada pelo Assistente de Otimização Fiscal
+  const handleApplyTaxOptimizedOrders = (
+    taxOrders: RebalanceOrder[],
+    strategy: TaxStrategy
+  ) => {
+    setOrders(taxOrders);
+    setAppliedTaxStrategy(strategy);
+  };
 
   // Workflow step determination
   const currentStep = executionResult
@@ -234,6 +270,21 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
                 </option>
               ))}
             </select>
+
+            <button
+              onClick={() => setShowTaxAssistant(!showTaxAssistant)}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border ${
+                showTaxAssistant
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+              }`}
+            >
+              <Calculator className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Otimização Fiscal</span>
+              {appliedTaxStrategy && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              )}
+            </button>
 
             <button
               onClick={loadSuggestedPlan}
@@ -315,24 +366,42 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
         </div>
       )}
 
+      {/* Tax Optimization Assistant (Tax-Smart Rebalancing) */}
+      {showTaxAssistant && currentPortfolio && (
+        <TaxOptimizationAssistant
+          portfolio={currentPortfolio}
+          onApplyTaxOptimizedOrders={handleApplyTaxOptimizedOrders}
+        />
+      )}
+
       {/* Main Grid: Orders on Left, Live Projection on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column (7 cols): Order Book / Proposed Boletas */}
         <div className="lg:col-span-7 space-y-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-emerald-400" />
-                  Boletas & Ordens da Simulação ({orders.length})
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-emerald-400" />
+                    Boletas & Ordens da Simulação ({orders.length})
+                  </h3>
+                  {appliedTaxStrategy && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      🌿 Otimização Fiscal Ativa
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-400">
                   Total Venda: <strong className="text-rose-400">R$ {totalSellBRL.toLocaleString('pt-BR')}</strong> • Total Compra: <strong className="text-emerald-400">R$ {totalBuyBRL.toLocaleString('pt-BR')}</strong>
                 </p>
               </div>
 
               <button
-                onClick={() => setOrders([])}
+                onClick={() => {
+                  setOrders([]);
+                  setAppliedTaxStrategy(null);
+                }}
                 className="text-xs text-slate-400 hover:text-slate-200 transition"
               >
                 Limpar Ordens
@@ -344,13 +413,22 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
               <div className="p-8 text-center bg-slate-950/40 rounded-xl border border-slate-800">
                 <Sliders className="w-8 h-8 text-slate-600 mx-auto mb-2" />
                 <p className="text-xs text-slate-300">Nenhuma ordem adicionada ainda.</p>
-                <button
-                  onClick={loadSuggestedPlan}
-                  className="mt-3 px-3 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Carregar Sugestão do ComplianceAgent
-                </button>
+                <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                  <button
+                    onClick={loadSuggestedPlan}
+                    className="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Sugestão Padrão IA
+                  </button>
+                  <button
+                    onClick={() => setShowTaxAssistant(true)}
+                    className="px-3 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5"
+                  >
+                    <Calculator className="w-3.5 h-3.5" />
+                    Otimizar com Assistente Fiscal
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -359,15 +437,15 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
                   return (
                     <div
                       key={idx}
-                      className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-start justify-between gap-3 ${
                         isSell
                           ? 'bg-rose-950/15 border-rose-800/30'
                           : 'bg-emerald-950/15 border-emerald-800/30'
                       }`}
                     >
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-start space-x-3">
                         <span
-                          className={`px-2 py-1 rounded text-xs font-bold font-mono ${
+                          className={`px-2 py-1 rounded text-xs font-bold font-mono shrink-0 mt-0.5 ${
                             isSell
                               ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                               : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
@@ -375,16 +453,42 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
                         >
                           {order.action === 'SELL' ? 'VENDA' : 'COMPRA'}
                         </span>
-                        <div>
-                          <div className="flex items-center space-x-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                             <strong className="text-xs font-bold text-white font-mono">{order.ticker}</strong>
                             <span className="text-[11px] text-slate-400">({order.assetClass})</span>
+                            {order.averagePrice && (
+                              <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                                PM: R$ {order.averagePrice.toFixed(2)}
+                              </span>
+                            )}
+                            {order.taxClassification && (
+                              <span
+                                className={`text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold ${
+                                  order.taxClassification === 'PREJUIZO_COMPENSAVEL'
+                                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                                    : order.taxClassification === 'ISENTO_20K'
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                    : order.taxClassification === 'ISENTO_LEGAL'
+                                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                                }`}
+                              >
+                                {order.taxClassification === 'PREJUIZO_COMPENSAVEL'
+                                  ? `Crédito: -R$ ${Math.abs(order.realizedGainLossBRL || 0).toLocaleString('pt-BR')}`
+                                  : order.taxClassification === 'ISENTO_20K'
+                                  ? 'Isenção R$ 20k'
+                                  : order.taxClassification === 'ISENTO_LEGAL'
+                                  ? 'Isento Lei 12.431'
+                                  : `IR: R$ ${(order.estimatedTaxBRL || 0).toLocaleString('pt-BR')}`}
+                              </span>
+                            )}
                           </div>
-                          <p className="text-[11px] text-slate-400 line-clamp-1">{order.reason}</p>
+                          <p className="text-[11px] text-slate-400 leading-snug">{order.reason}</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end space-x-4 text-xs">
+                      <div className="flex items-center justify-between sm:justify-end space-x-4 text-xs shrink-0 self-end sm:self-auto">
                         <div className="text-right font-mono">
                           <div className="text-white font-semibold">
                             {order.quantity.toLocaleString('pt-BR')} un. x R$ {order.unitPrice.toFixed(2)}

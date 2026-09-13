@@ -37,10 +37,13 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const filteredAlerts = alerts.filter((alert) => {
+    const effectiveRuleSource = alert.rule_source ?? alert.ruleSource;
+    const effectivePolicyId = alert.policy_id ?? alert.policyId;
+
     if (severityFilter !== 'ALL' && alert.severity !== severityFilter) {
       return false;
     }
-    if (ruleSourceFilter !== 'ALL' && alert.ruleSource !== ruleSourceFilter) {
+    if (ruleSourceFilter !== 'ALL' && effectiveRuleSource !== ruleSourceFilter) {
       return false;
     }
     if (classFilter !== 'ALL' && alert.assetClass !== classFilter) {
@@ -51,8 +54,8 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
       const matchesName = alert.portfolioName.toLowerCase().includes(q);
       const matchesClient = alert.clientName.toLowerCase().includes(q);
       const matchesClass = alert.assetClass.toLowerCase().includes(q);
-      const matchesPolicy = alert.policyId.toLowerCase().includes(q);
-      const matchesRule = alert.ruleSource.toLowerCase().includes(q);
+      const matchesPolicy = (effectivePolicyId || '').toLowerCase().includes(q);
+      const matchesRule = (effectiveRuleSource || '').toLowerCase().includes(q);
       if (!matchesName && !matchesClient && !matchesClass && !matchesPolicy && !matchesRule) {
         return false;
       }
@@ -61,18 +64,22 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
   });
 
   const handleCopyMemo = (alert: ComplianceAlert) => {
+    const effectiveRuleSource = alert.rule_source ?? alert.ruleSource;
+    const effectivePolicyId = alert.policy_id ?? alert.policyId;
+    const effectiveCurrentValue = alert.current_value ?? alert.currentValue;
+
     const text = `PARECER DE DESENQUADRAMENTO FIDUCIÁRIO - FLOWCORE
 Carteira: ${alert.portfolioName} (${alert.clientName})
 Classe Afetada: ${alert.assetClass}
-rule_source: ${alert.ruleSource}
-policy_id: ${alert.policyId}
-limit: ${alert.limit.toFixed(1)}% | current_value: ${alert.currentValue.toFixed(1)}%
+rule_source: ${effectiveRuleSource}
+policy_id: ${effectivePolicyId}
+limit: ${alert.limit.toFixed(1)}% | current_value: ${effectiveCurrentValue.toFixed(1)}%
 Desvio: +${alert.difference.toFixed(1)} p.p. | Tolerância: ${alert.tolerancePP.toFixed(1)} p.p. | Severidade: ${alert.severity}
 Excesso Financeiro em Risco: R$ ${alert.excessValueBRL.toLocaleString('pt-BR')}
 Volume Sugerido para Rebalancear: R$ ${alert.recommendedTradeValue.toLocaleString('pt-BR')}
 
 CONTEXTO FIDUCIÁRIO (MANDATO DO CLIENTE vs. POLÍTICA INTERNA):
-${alert.mandateVsInternalExplanation || 'Mandato do Cliente: Contrato bilateral de alocação individual. Política Interna: Diretriz prudencial do Comitê de Risco da Gestora.'}
+${alert.mandateVsInternalExplanation || (effectiveRuleSource === 'MANDATO_CLIENTE' ? 'Mandato do Cliente: Contrato bilateral de alocação individual com dever fiduciário estrito.' : 'Política Interna: Diretriz prudencial do Comitê de Risco e Governança da Gestora.')}
 
 Diagnóstico Operacional:
 ${alert.message}
@@ -87,9 +94,9 @@ ${alert.suggestedAction}`;
 
   const criticalCount = alerts.filter((a) => a.severity === 'CRITICAL').length;
   const warningCount = alerts.filter((a) => a.severity === 'WARNING').length;
-  const mandateCount = alerts.filter((a) => a.ruleSource === 'MANDATO_CLIENTE').length;
-  const internalCount = alerts.filter((a) => a.ruleSource === 'POLITICA_INTERNA').length;
-  const regulatoryCount = alerts.filter((a) => a.ruleSource === 'REGRA_REGULATORIA').length;
+  const mandateCount = alerts.filter((a) => (a.rule_source ?? a.ruleSource) === 'MANDATO_CLIENTE').length;
+  const internalCount = alerts.filter((a) => (a.rule_source ?? a.ruleSource) === 'POLITICA_INTERNA').length;
+  const regulatoryCount = alerts.filter((a) => (a.rule_source ?? a.ruleSource) === 'REGRA_REGULATORIA').length;
 
   return (
     <div className="space-y-6">

@@ -51,27 +51,39 @@ export class ComplianceAgent {
       const currentVal = classTotals[limit.assetClass] || 0;
       const currentPct = safeTotal > 0 ? (currentVal / safeTotal) * 100 : 0;
       const roundedCurrentPct = Math.round(currentPct * 100) / 100;
-      const tolerance = limit.tolerancePP ?? 5.0;
+      const criticalTolerance = limit.criticalTolerancePP ?? limit.tolerancePP ?? 5.0;
+      const warningTolerance = limit.warningTolerancePP ?? 0.0;
 
       let severity: AlertSeverity = 'NORMAL';
       let deviationPP = 0;
 
-      if (roundedCurrentPct > limit.maxPercent) {
+      // Verificação com limites percentuais explícitos se configurados
+      if (limit.criticalTriggerPercent !== undefined && roundedCurrentPct >= limit.criticalTriggerPercent) {
+        severity = 'CRITICAL';
         deviationPP = Math.round((roundedCurrentPct - limit.maxPercent) * 100) / 100;
-        if (deviationPP > tolerance) {
-          severity = 'CRITICAL'; // Excesso acima da tolerância
+      } else if (limit.warningTriggerPercent !== undefined && roundedCurrentPct >= limit.warningTriggerPercent) {
+        severity = 'WARNING';
+        deviationPP = Math.round((roundedCurrentPct - limit.maxPercent) * 100) / 100;
+      } else if (roundedCurrentPct > limit.maxPercent) {
+        deviationPP = Math.round((roundedCurrentPct - limit.maxPercent) * 100) / 100;
+        if (deviationPP > criticalTolerance) {
+          severity = 'CRITICAL'; // Excesso acima da tolerância crítica
         } else {
-          severity = 'WARNING'; // Excesso dentro da tolerância
+          severity = 'WARNING'; // Excesso dentro da tolerância de warning
         }
       } else if (roundedCurrentPct < limit.minPercent) {
-        // Alerta também quando alocação cai abaixo do piso
+        // Alerta quando alocação cai abaixo do piso regulatório/mandato
         const underDeviation = Math.round((limit.minPercent - roundedCurrentPct) * 100) / 100;
         deviationPP = -underDeviation;
-        if (underDeviation > tolerance) {
+        if (underDeviation > criticalTolerance) {
           severity = 'CRITICAL';
         } else {
           severity = 'WARNING';
         }
+      } else if (warningTolerance > 0 && roundedCurrentPct >= (limit.maxPercent - warningTolerance)) {
+        // Alerta de Warning preventivo quando a alocação entra na margem de proximidade do teto
+        severity = 'WARNING';
+        deviationPP = Math.round((roundedCurrentPct - limit.maxPercent) * 100) / 100;
       }
 
       summaries.push({
@@ -85,7 +97,7 @@ export class ComplianceAgent {
         severity,
         ruleSource: limit.ruleSource || 'MANDATO_CLIENTE',
         policyId: limit.policyId || portfolio.assignedPolicyId || 'IPS-DEFAULT',
-        tolerancePP: tolerance,
+        tolerancePP: criticalTolerance,
       });
     }
 
@@ -199,6 +211,9 @@ export class ComplianceAgent {
         policyId,
         limit: isOver ? alloc.maxPercent : alloc.minPercent,
         currentValue: alloc.currentPercent,
+        rule_source: ruleSource,
+        policy_id: policyId,
+        current_value: alloc.currentPercent,
         difference: alloc.deviationPP,
         effectiveDate: '01/01/2026',
         tolerancePP: tolerance,
