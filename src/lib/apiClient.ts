@@ -2,24 +2,12 @@
  * Cliente de API com Autenticação Centralizada Bearer Token para o FlowCore Sentinel
  */
 
-declare const __FLOWCORE_RUNTIME_TOKEN__: string | undefined;
+
 
 const STORAGE_KEY = 'FLOWCORE_api_token';
 
 // Obtém o token definido em tempo de compilação ou execução
-function resolveDefaultToken(): string {
-  if (typeof window !== 'undefined' && (window as any).__FLOWCORE_INITIAL_TOKEN__) {
-    return (window as any).__FLOWCORE_INITIAL_TOKEN__;
-  }
-  if (typeof __FLOWCORE_RUNTIME_TOKEN__ !== 'undefined' && __FLOWCORE_RUNTIME_TOKEN__) {
-    return __FLOWCORE_RUNTIME_TOKEN__;
-  }
-  // Removemos o token hardcoded de fallback conforme instrução de segurança.
-  // Deve ser configurado via VITE_API_TOKEN ou inserido na interface pelo usuário.
-  return (import.meta as any).env?.VITE_API_TOKEN || '';
-}
-
-export const DEFAULT_DEV_TOKEN = resolveDefaultToken();
+export const DEFAULT_DEV_TOKEN = '';
 
 type AuthListener = (token: string) => void;
 type AuthStatusListener = (hasAuthError: boolean, lastErrorDetail?: string) => void;
