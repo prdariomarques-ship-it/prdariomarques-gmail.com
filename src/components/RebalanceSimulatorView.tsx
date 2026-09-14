@@ -24,6 +24,7 @@ import {
 } from '../types';
 import { ComplianceAgent } from '../server/complianceAgent';
 import { TaxOptimizationAssistant } from './TaxOptimizationAssistant';
+import { authenticatedFetch } from '../lib/apiClient';
 
 interface RebalanceSimulatorViewProps {
   portfolios: Portfolio[];
@@ -59,7 +60,7 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
     setIsLoadingPlan(true);
     setExecutionResult(null);
     try {
-      const res = await fetch(`/api/portfolios/${currentPortfolio.id}/rebalance-plan`);
+      const res = await authenticatedFetch(`/api/portfolios/${currentPortfolio.id}/rebalance-plan`);
       const text = await res.text();
       let data: any = null;
       try {
@@ -180,7 +181,7 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
     if (!currentPortfolio) return;
     setIsExecuting(true);
     try {
-      const res = await fetch(`/api/portfolios/${currentPortfolio.id}/rebalance`, {
+      const res = await authenticatedFetch(`/api/portfolios/${currentPortfolio.id}/rebalance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders }),
@@ -359,8 +360,8 @@ export const RebalanceSimulatorView: React.FC<RebalanceSimulatorViewProps> = ({
             <span>Status Anterior: <strong>{executionResult.previousSeverity}</strong></span>
             <span>➔</span>
             <span>Novo Status: <strong className="text-white bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/40">{executionResult.newSeverity}</strong></span>
-            {executionResult.approver && (
-              <span className="text-slate-400">Aprovador: <strong className="text-white">{executionResult.approver}</strong></span>
+            {executionResult.approvedBy && (
+              <span className="text-slate-400">Aprovador: <strong className="text-white">{executionResult.approvedBy}</strong></span>
             )}
           </div>
         </div>

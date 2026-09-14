@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Header, TabKey } from './components/Header';
 import { DashboardView } from './components/DashboardView';
 import { OwnerCommandCenterView } from './components/OwnerCommandCenterView';
@@ -7,6 +7,7 @@ import { PortfoliosView } from './components/PortfoliosView';
 import { RebalanceSimulatorView } from './components/RebalanceSimulatorView';
 import { AiComplianceChatView } from './components/AiComplianceChatView';
 import { LimitsConfigurationView } from './components/LimitsConfigurationView';
+import { ConnectivityLatencyBadge } from './components/common/ConnectivityLatencyBadge';
 import {
   Portfolio,
   ComplianceAlert,
@@ -22,11 +23,21 @@ import { ComplianceAgent } from './server/complianceAgent';
 import { RefreshCw, ShieldAlert, Sparkles, Activity, Bot, Zap, Bell, CheckCircle2, Mail, Smartphone } from 'lucide-react';
 import { NotificationToastContainer } from './components/NotificationToast';
 import { NotificationSettingsModal } from './components/NotificationSettingsModal';
+import { ApiSecurityModal } from './components/common/ApiSecurityModal';
+import { DataModeControlBanner } from './components/common/DataModeControlBanner';
+import {
+  resolvePortfoliosAndAlertsForMode,
+  SimulationScenario,
+  ProjectionScenario,
+} from './utils/simulationEngine';
+import { authenticatedFetch, subscribeAuthStatusChange, getAuthErrorState } from './lib/apiClient';
 import { playCriticalAlertSound, isSoundEnabled, setSoundEnabled } from './utils/audioNotification';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
   const [dataMode, setDataMode] = useState<DataMode>('LIVE');
+  const [simulationScenario, setSimulationScenario] = useState<SimulationScenario>('REBALANCE_IDEAL');
+  const [projectionScenario, setProjectionScenario] = useState<ProjectionScenario>('FULL_PIPELINE');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [alerts, setAlerts] = useState<ComplianceAlert[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('port-001');
@@ -47,26 +58,38 @@ export default function App() {
   const [channelSettings, setChannelSettings] = useState<NotificationChannelSettings>({
     email: {
       enabled: true,
-      recipient: 'PrDariomarques@gmail.com',
+      recipient: 'compliance.officer@FlowCore.investments',
       sendOnCriticalOnly: true,
       includeReportAttachment: true,
     },
     sms: {
       enabled: true,
-      phoneNumber: '+55 (11) 98765-4321',
+      phoneNumber: '+55 (11) 91234-5678',
       sendOnCriticalOnly: true,
     },
     inAppAudio: true,
   });
   const [dispatchLogs, setDispatchLogs] = useState<SecondaryDispatchLog[]>([]);
 
+  // Autenticação da API (Bearer Token)
+  const [isApiSecurityModalOpen, setIsApiSecurityModalOpen] = useState<boolean>(false);
+  const [hasAuthError, setHasAuthError] = useState<boolean>(getAuthErrorState().hasError);
+  const [authErrorMessage, setAuthErrorMessage] = useState<string>('');
+
+  useEffect(() => {
+    return subscribeAuthStatusChange((hasErr, msg) => {
+      setHasAuthError(hasErr);
+      setAuthErrorMessage(msg || '');
+    });
+  }, []);
+
   const seenAlertIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef<boolean>(true);
 
-  // Helper para buscar e fazer parse seguro de JSON, prevenindo erros caso o servidor retorne HTML
+  // Helper para buscar e fazer parse seguro de JSON com cabeçalho de autenticação Bearer
   const safeJsonFetch = async (url: string, init?: RequestInit) => {
     try {
-      const res = await fetch(url, init);
+      const res = await authenticatedFetch(url, init);
       const text = await res.text();
       try {
         return JSON.parse(text);
@@ -146,7 +169,7 @@ export default function App() {
   // Limpa histórico de despachos
   const handleClearDispatchLogs = async () => {
     try {
-      await fetch('/api/notifications/dispatches/clear', { method: 'POST' });
+      await authenticatedFetch('/api/notifications/dispatches/clear', { method: 'POST' });
       setDispatchLogs([]);
     } catch (e) {
       console.error('Erro ao limpar histórico de despachos:', e);
@@ -255,7 +278,7 @@ export default function App() {
 
       // Dispara canais secundários (E-mail / SMS) no backend se configurados
       try {
-        fetch('/api/notifications/dispatches/trigger', {
+        authenticatedFetch('/api/notifications/dispatches/trigger', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ alerts: newCriticals }),
@@ -337,7 +360,7 @@ export default function App() {
   const handleResetData = async () => {
     setIsResetting(true);
     try {
-      await fetch('/api/portfolios/reset', { method: 'POST' });
+      await authenticatedFetch('/api/portfolios/reset', { method: 'POST' });
       seenAlertIdsRef.current.clear();
       isInitialLoadRef.current = true;
       setActiveToasts([]);
@@ -407,7 +430,7 @@ export default function App() {
   // Handlers para o Módulo de Configuração de Limites & Tolerâncias
   const handleUpdateLimits = async (configs: AssetClassThresholdConfig[], portfolioId?: string) => {
     try {
-      const res = await fetch('/api/limits/config', {
+      const res = await authenticatedFetch('/api/limits/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ configs, portfolioId }),
@@ -454,7 +477,7 @@ export default function App() {
 
   const handleResetLimits = async () => {
     try {
-      const res = await fetch('/api/limits/reset', { method: 'POST' });
+      const res = await authenticatedFetch('/api/limits/reset', { method: 'POST' });
       const data = await res.json();
       if (data && data.success) {
         if (Array.isArray(data.portfolios)) {
@@ -497,8 +520,32 @@ export default function App() {
     setSoundEnabled(next);
   };
 
-  const criticalCount = alerts.filter((a) => a.severity === 'CRITICAL').length;
-  const warningCount = alerts.filter((a) => a.severity === 'WARNING').length;
+  // Transição de modo com seleção de cenário inteligente
+  const handleSetDataMode = (newMode: DataMode) => {
+    setDataMode(newMode);
+    if (newMode === 'SIMULATION') {
+      setSimulationScenario('REBALANCE_IDEAL');
+    } else if (newMode === 'PROJECTION') {
+      setProjectionScenario('FULL_PIPELINE');
+    }
+  };
+
+  // Conjunto de carteiras e alertas resolvidos conforme o modo selecionado
+  const { portfolios: effectivePortfolios, alerts: effectiveAlerts } = useMemo(() => {
+    return resolvePortfoliosAndAlertsForMode(
+      portfolios,
+      dataMode,
+      simulationScenario,
+      projectionScenario
+    );
+  }, [portfolios, dataMode, simulationScenario, projectionScenario]);
+
+  const baseAum = portfolios.reduce((sum, p) => sum + p.totalAum, 0);
+  const effectiveAum = effectivePortfolios.reduce((sum, p) => sum + p.totalAum, 0);
+  const criticalCount = effectiveAlerts.filter((a) => a.severity === 'CRITICAL').length;
+  const warningCount = effectiveAlerts.filter((a) => a.severity === 'WARNING').length;
+  const normalCount = effectivePortfolios.filter((p) => p.status === 'NORMAL').length;
+  const complianceRate = effectivePortfolios.length > 0 ? (normalCount / effectivePortfolios.length) * 100 : 0;
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
   if (isLoading) {
@@ -536,7 +583,7 @@ export default function App() {
         onResetData={handleResetData}
         isResetting={isResetting}
         dataMode={dataMode}
-        onDataModeChange={setDataMode}
+        setDataMode={handleSetDataMode}
         notifications={notifications}
         unreadNotificationsCount={unreadNotificationsCount}
         onMarkNotificationAsRead={handleMarkNotificationAsRead}
@@ -552,9 +599,32 @@ export default function App() {
         isScanning={isScanning}
         channelSettings={channelSettings}
         onOpenNotificationSettings={() => setIsSettingsModalOpen(true)}
+        onOpenApiSecurity={() => setIsApiSecurityModalOpen(true)}
+        hasAuthError={hasAuthError}
       />
 
-      {/* FLOWCORE ACTIVE: Background Agent Status Bar com Sentinela e Verificação Imediata */}
+      {/* Banner de Alerta Crítico quando a API responder com 401 Unauthorized */}
+      {hasAuthError && (
+        <div
+          id="auth-error-banner"
+          className="bg-rose-950/95 border-b border-rose-500/50 px-4 sm:px-6 lg:px-8 py-2.5 text-xs text-rose-200 flex flex-wrap items-center justify-between gap-2 shadow-lg"
+        >
+          <div className="flex items-center space-x-2">
+            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+            <span>
+              <strong>Acesso Negado (HTTP 401):</strong> {authErrorMessage || 'Token de API ausente ou inválido.'} Todas as rotas /api/* exigem autenticação Bearer válida.
+            </span>
+          </div>
+          <button
+            onClick={() => setIsApiSecurityModalOpen(true)}
+            className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer shadow-sm"
+          >
+            Configurar Token de API
+          </button>
+        </div>
+      )}
+
+      {/* FlowCore ACTIVE: Background Agent Status Bar com Sentinela e Verificação Imediata */}
       <div className="bg-slate-950/90 border-b border-white/[0.06] px-4 sm:px-6 lg:px-8 py-2">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs gap-2">
           <div className="flex items-center space-x-2.5">
@@ -564,11 +634,12 @@ export default function App() {
             </span>
             <span className="font-extrabold text-white text-[11px] tracking-wider uppercase flex items-center gap-1.5">
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
-              FLOWCORE ACTIVE
+              FlowCore ACTIVE
             </span>
+            <ConnectivityLatencyBadge />
             <span className="text-slate-600">|</span>
             <span className="text-slate-300 text-[11px] hidden sm:inline">
-              Sentinel v2.4 monitorando 4 carteiras, mandatos CVM 175 e IPS com alerta imediato ativo.
+              Sentinel v2.4 monitorando 6 carteiras, mandatos CVM 175 e IPS com alerta imediato ativo.
             </span>
           </div>
 
@@ -640,34 +711,38 @@ export default function App() {
         </div>
       </div>
 
-      {/* Persistent Disclaimer for Non-Live Modes */}
-      {dataMode === 'SIMULATION' && (
-        <div className="bg-cyan-950/60 border-b border-cyan-500/40 px-4 py-2 text-center text-xs text-cyan-200">
-          <strong>MODO SIMULAÇÃO ATIVO:</strong> Os valores de alocação e rebalanceamento estão sendo modelados em ambiente sandbox. Nenhuma ordem é transmitida a corretoras.
-        </div>
-      )}
-      {dataMode === 'PROJECTION' && (
-        <div className="bg-purple-950/60 border-b border-purple-500/40 px-4 py-2 text-center text-xs text-purple-200">
-          <strong>MODO PROJEÇÃO ESTATÍSTICA:</strong> Incorporando aportes previstos do pipeline comercial (+R$ 18.5M) e projeções de rendimento Q1/Q2.
-        </div>
-      )}
+      {/* Banner de Controle Interativo para Modo Simulação Sandbox e Modo Projeção Estatística */}
+      <DataModeControlBanner
+        dataMode={dataMode}
+        onSetDataMode={handleSetDataMode}
+        simulationScenario={simulationScenario}
+        onSelectSimulationScenario={setSimulationScenario}
+        projectionScenario={projectionScenario}
+        onSelectProjectionScenario={setProjectionScenario}
+        onNavigateTab={(tab) => setActiveTab(tab)}
+        baseAum={baseAum}
+        effectiveAum={effectiveAum}
+        criticalAlertsCount={criticalCount}
+        complianceRate={complianceRate}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'dashboard' && (
           <DashboardView
-            portfolios={portfolios}
-            alerts={alerts}
+            portfolios={effectivePortfolios}
+            alerts={effectiveAlerts}
             onSelectPortfolio={handleSelectPortfolio}
             onNavigateTab={(tab) => setActiveTab(tab)}
             onStartRebalance={handleStartRebalance}
+            dataMode={dataMode}
           />
         )}
 
         {activeTab === 'owner' && (
           <OwnerCommandCenterView
-            portfolios={portfolios}
-            alerts={alerts}
+            portfolios={effectivePortfolios}
+            alerts={effectiveAlerts}
             onSelectPortfolio={handleSelectPortfolio}
             onNavigateTab={(tab) => setActiveTab(tab)}
             onStartRebalance={handleStartRebalance}
@@ -677,7 +752,7 @@ export default function App() {
 
         {activeTab === 'alerts' && (
           <AlertsView
-            alerts={alerts}
+            alerts={effectiveAlerts}
             onStartRebalance={handleStartRebalance}
             onSelectPortfolio={handleSelectPortfolio}
           />
@@ -685,7 +760,7 @@ export default function App() {
 
         {activeTab === 'portfolios' && (
           <PortfoliosView
-            portfolios={portfolios}
+            portfolios={effectivePortfolios}
             selectedPortfolioId={selectedPortfolioId}
             onSelectPortfolio={setSelectedPortfolioId}
             onStartRebalance={handleStartRebalance}
@@ -695,7 +770,7 @@ export default function App() {
 
         {activeTab === 'simulator' && (
           <RebalanceSimulatorView
-            portfolios={portfolios}
+            portfolios={effectivePortfolios}
             selectedPortfolioId={selectedPortfolioId}
             onSelectPortfolio={setSelectedPortfolioId}
             onRebalanceExecuted={handleRebalanceExecuted}
@@ -704,18 +779,18 @@ export default function App() {
 
         {activeTab === 'agent' && (
           <AiComplianceChatView
-            portfolios={portfolios}
-            alerts={alerts}
+            portfolios={effectivePortfolios}
+            alerts={effectiveAlerts}
             initialQuery={agentInitialQuery}
           />
         )}
 
         {activeTab === 'limits' && (
           <LimitsConfigurationView
-            portfolios={portfolios}
+            portfolios={effectivePortfolios}
             onUpdateLimits={handleUpdateLimits}
             onResetLimits={handleResetLimits}
-            currentAlerts={alerts}
+            currentAlerts={effectiveAlerts}
           />
         )}
       </main>
@@ -746,6 +821,12 @@ export default function App() {
         onRefreshLogs={fetchDispatchLogs}
         onClearLogs={handleClearDispatchLogs}
         onTestDispatch={handleTestDispatch}
+      />
+
+      {/* Modal de Segurança & Token Bearer da API (CVM 175 / ISO 27001) */}
+      <ApiSecurityModal
+        isOpen={isApiSecurityModalOpen}
+        onClose={() => setIsApiSecurityModalOpen(false)}
       />
     </div>
   );

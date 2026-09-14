@@ -752,10 +752,10 @@ export const ClientsAtRisk: React.FC<ClientsAtRiskProps> = ({
                       return (
                         <div className="pt-2">
                           <AIInsightCard
-                            id={`client-insight-${client.id}`}
+                            id={`client-insight-${client.portfolioId}`}
                             insight={{
                               what: isCritical
-                                ? `Conta em estado crítico por estouro de ${client.primaryIssue} na carteira ${client.name}. Patrimônio sob risco de R$ ${(client.aum / 1000000).toFixed(2)}M.`
+                                ? `Conta em estado crítico por estouro de ${client.primaryIssue} na carteira ${client.portfolioName}. Patrimônio sob risco de R$ ${(client.totalAum / 1000000).toFixed(2)}M.`
                                 : `Posição com proximidade no limite regulatório em ${client.primaryIssue}. Monitoramento de risco preventivo ativo.`,
                               why:
                                 clientAlert?.aiExplanation?.why ||
@@ -766,15 +766,15 @@ export const ClientsAtRisk: React.FC<ClientsAtRiskProps> = ({
                                 ? 'Risco fiduciário de desenquadramento compulsório e descumprimento de dever de diligência regulatória perante Resolução CVM 175.'
                                 : 'Risco de arrasto de rentabilidade e aproximação perigosa da banda de tolerância do mandato bilateral do cliente.',
                               action: isCritical
-                                ? `Executar o plano de rebalanceamento pré-validado no simulador e agendar alinhamento fiduciário com o titular ${client.name}.`
+                                ? `Executar o plano de rebalanceamento pré-validado no simulador e agendar alinhamento fiduciário com o titular ${client.clientName}.`
                                 : 'Direcionar os próximos fluxos de proventos e amortizações para recomposição da folga de segurança sem giro desnecessário.',
                               confidence: isCritical ? 97 : 91,
                               source: clientAlert?.ruleSource
                                 ? `${clientAlert.ruleSource} • Política ${clientAlert.policyId} • Resolução CVM 175`
                                 : 'Matriz Multidimensional de Risco Fiduciário FlowCore • CVM 175',
                             }}
-                            title={`Parecer Prescritivo de Risco • ${client.name}`}
-                            subtitle={`Nível: ${client.riskLevel} • Health Score: ${client.score}/100 • AUM: R$ ${(client.aum / 1000000).toFixed(2)}M`}
+                            title={`Parecer Prescritivo de Risco • ${client.clientName}`}
+                            subtitle={`Nível: ${client.status} • Health Score: ${client.healthScore}/100 • AUM: R$ ${(client.totalAum / 1000000).toFixed(2)}M`}
                             category={isCritical ? 'COMPLIANCE' : 'RISK'}
                             severity={isCritical ? 'CRITICAL' : 'WARNING'}
                             ruleSource={clientAlert?.ruleSource}
@@ -786,8 +786,8 @@ export const ClientsAtRisk: React.FC<ClientsAtRiskProps> = ({
                             current_value={clientAlert?.currentValue}
                             difference={clientAlert?.difference}
                             mandateVsInternalExplanation={clientAlert?.mandateVsInternalExplanation}
-                            portfolioName={client.name}
-                            clientName={client.name}
+                            portfolioName={client.portfolioName}
+                            clientName={client.clientName}
                             onApplyAction={() => onStartRebalance(client.portfolioId)}
                             actionLabel="Executar Rebalanceamento"
                             secondaryActionLabel="Ver Carteira Completa"

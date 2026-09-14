@@ -68,7 +68,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
     const effectivePolicyId = alert.policy_id ?? alert.policyId;
     const effectiveCurrentValue = alert.current_value ?? alert.currentValue;
 
-    const text = `PARECER DE DESENQUADRAMENTO FIDUCIÁRIO - FLOWCORE
+    const text = `PARECER DE DESENQUADRAMENTO FIDUCIÁRIO - FlowCore
 Carteira: ${alert.portfolioName} (${alert.clientName})
 Classe Afetada: ${alert.assetClass}
 rule_source: ${effectiveRuleSource}

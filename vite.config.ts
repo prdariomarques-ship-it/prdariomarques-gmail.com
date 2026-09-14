@@ -6,6 +6,9 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      '__FLOWCORE_RUNTIME_TOKEN__': JSON.stringify(process.env.API_TOKEN || 'flowcore-sentinel-token-2026'),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

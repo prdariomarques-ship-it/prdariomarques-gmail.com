@@ -11,6 +11,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Portfolio, ComplianceAlert, ChatMessage } from '../types';
+import { authenticatedFetch } from '../lib/apiClient';
+import { MarkdownRenderer } from './common/MarkdownRenderer';
 
 interface AiComplianceChatViewProps {
   portfolios: Portfolio[];
@@ -59,7 +61,7 @@ export const AiComplianceChatView: React.FC<AiComplianceChatViewProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/compliance/chat', {
+      const response = await authenticatedFetch('/api/compliance/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: textToSend }),
@@ -72,10 +74,17 @@ export const AiComplianceChatView: React.FC<AiComplianceChatViewProps> = ({
         data = null;
       }
 
+      let agentContent = 'Desculpe, ocorreu um erro ao consultar o motor de compliance.';
+      if (response.status === 401) {
+        agentContent = '⚠️ **Acesso Não Autorizado (401)**: O token de autenticação informado não possui permissão para consultar o motor do FlowCore. Atualize a chave no painel de segurança da API.';
+      } else if (data?.success) {
+        agentContent = data.answer;
+      }
+
       const agentMessage: ChatMessage = {
         id: `agent-${Date.now()}`,
         sender: 'agent',
-        content: data?.success ? data.answer : 'Desculpe, ocorreu um erro ao consultar o motor de compliance.',
+        content: agentContent,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -178,10 +187,14 @@ export const AiComplianceChatView: React.FC<AiComplianceChatViewProps> = ({
                     <span>{msg.timestamp}</span>
                   </div>
 
-                  {/* Message body with basic formatting */}
-                  <div className="whitespace-pre-wrap space-y-2">
-                    {msg.content}
-                  </div>
+                  {/* Message body with Markdown rendering for agent messages */}
+                  {isAgent ? (
+                    <MarkdownRenderer content={msg.content} />
+                  ) : (
+                    <div className="whitespace-pre-wrap leading-relaxed">
+                      {msg.content}
+                    </div>
+                  )}
 
                   {isAgent && (
                     <div className="pt-2 border-t border-slate-800/80 flex justify-end">

@@ -152,6 +152,7 @@ export interface Portfolio {
   lastRebalanced: string;
   notes?: string;
   assignedPolicyId?: string;
+  isProjected?: boolean;
 }
 
 export interface AiExplanation {
@@ -231,6 +232,15 @@ export interface EmailChannelConfig {
   recipient: string;
   sendOnCriticalOnly: boolean;
   includeReportAttachment: boolean;
+  scheduledReportEnabled?: boolean;
+  scheduledReportTime?: string;
+  scheduledReportDayOfWeek?: string;
+  scheduledReportCron?: string;
+  severitiesFilter?: AlertSeverity[];
+  assetClassesFilter?: AssetClass[];
+  assetTolerances?: Partial<Record<AssetClass, number>>;
+  customSubjectTemplate?: string;
+  customBodyTemplate?: string;
 }
 
 export interface SmsChannelConfig {
@@ -240,9 +250,11 @@ export interface SmsChannelConfig {
 }
 
 export interface NotificationChannelSettings {
+  officeId?: string;
   email: EmailChannelConfig;
   sms: SmsChannelConfig;
   inAppAudio: boolean;
+  logRetentionDays?: number;
   updatedAt?: string;
 }
 
@@ -257,6 +269,21 @@ export interface SecondaryDispatchLog {
   alertId?: string;
   portfolioName?: string;
   severity?: AlertSeverity;
+  reportType?: 'CRITICAL_ALERT' | 'SCHEDULED_SUMMARY' | 'TEST';
+}
+
+export interface AlertComplianceSnapshot {
+  date: string; // e.g. '07/09'
+  fullDate: string; // e.g. '07/09/2026'
+  dayLabel: string; // e.g. 'Seg 07' or 'D-6'
+  timestamp: number;
+  totalPortfolios: number;
+  compliantPortfolios: number;
+  criticalAlerts: number;
+  warningAlerts: number;
+  complianceRate: number; // e.g. 83.3 (%)
+  totalExcessBRL: number;
+  marketContext?: string;
 }
 
 export interface ComplianceBreachHistoryPoint {
@@ -389,7 +416,7 @@ export interface ClientRiskProfile {
   recommendedActions?: string[];
 }
 
-export interface FlowCoreAgentTelemetry {
+export interface PmxWealthAgentTelemetry {
   activeAgents: {
     name: string;
     role: string;

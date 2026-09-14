@@ -23,7 +23,7 @@ export const initialPolicies: Policy[] = [
         source: 'MANDATO_CLIENTE',
         strictness: 'HARD_STOP',
         effectiveDate: '01/01/2026',
-        description: 'Teto máximo de ações locais estipulado no mandato do cliente Roberto Silveira.',
+        description: 'Teto máximo de ações locais estipulado no mandato do cliente Cliente Demo A.',
       },
       {
         id: 'rul-aw-02',
@@ -162,7 +162,7 @@ export const initialPortfolios: Portfolio[] = [
   {
     id: 'port-001',
     name: 'Carteira Alpha Wealth Private',
-    clientName: 'Roberto Silveira & Família',
+    clientName: 'Cliente Demo A & Família',
     code: 'AW-7821',
     manager: 'Carlos Eduardo Mendes (CFA)',
     profile: 'Moderado',
@@ -292,7 +292,7 @@ export const initialPortfolios: Portfolio[] = [
   {
     id: 'port-002',
     name: 'Fundo Horizon Previdência PGBL',
-    clientName: 'Grupo Horizon Seguros',
+    clientName: 'Empresa Exemplo S.A.',
     code: 'HZ-4091',
     manager: 'Marina Fagundes (CNPI)',
     profile: 'Conservador',
@@ -365,7 +365,7 @@ export const initialPortfolios: Portfolio[] = [
   {
     id: 'port-003',
     name: 'Portfólio Solaris Tech Inovação',
-    clientName: 'Lucas Albuquerque & Associados',
+    clientName: 'Cliente Demo B & Associados',
     code: 'SOL-9912',
     manager: 'Guilherme Rocha (CGA)',
     profile: 'Arrojado',
@@ -437,8 +437,8 @@ export const initialPortfolios: Portfolio[] = [
   },
   {
     id: 'port-004',
-    name: 'Família Bragança Family Office',
-    clientName: 'Bragança Participações S.A.',
+    name: 'Família Demo Family Office',
+    clientName: 'Holdings Fictícias S.A.',
     code: 'FB-1044',
     manager: 'Carlos Eduardo Mendes (CFA)',
     profile: 'Arrojado',
@@ -540,7 +540,7 @@ export const initialPortfolios: Portfolio[] = [
   {
     id: 'port-005',
     name: 'Fundo Titanium Institucional',
-    clientName: 'RPPS Fundo Previdenciário Municipal',
+    clientName: 'Fundo Previdenciário Demo',
     code: 'TI-6610',
     manager: 'Renata Vasconcellos (CFA)',
     profile: 'Moderado',
@@ -623,7 +623,7 @@ export const initialPortfolios: Portfolio[] = [
   {
     id: 'port-006',
     name: 'Carteira Minerva Cautela',
-    clientName: 'Helena Montenegro',
+    clientName: 'Cliente Demo C',
     code: 'MIN-0042',
     manager: 'Marina Fagundes (CNPI)',
     profile: 'Conservador',

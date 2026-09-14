@@ -17,7 +17,7 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-const STORAGE_KEY = 'flowcore_alert_sound_enabled';
+const STORAGE_KEY = 'FLOWCORE_alert_sound_enabled';
 
 export function isSoundEnabled(): boolean {
   if (typeof window === 'undefined') return true;

@@ -92,10 +92,10 @@ export const ComplianceBreachHistoryChart: React.FC<ComplianceBreachHistoryChart
   // Cores personalizadas para cada carteira
   const portfolioColorPalette: { [key: string]: string } = {
     'port-001': '#f43f5e', // Rose / Alpha Privada
-    'port-002': '#06b6d4', // Cyan / Pedro Henrique
-    'port-003': '#10b981', // Emerald / Clara Mendes
-    'port-004': '#f59e0b', // Amber / Mariana Rios
-    'port-005': '#8b5cf6', // Violet / Family Solaris
+    'port-002': '#06b6d4', // Cyan / Cliente Exemplo 2
+    'port-003': '#10b981', // Emerald / Cliente Exemplo 3
+    'port-004': '#f59e0b', // Amber / Carteira Exemplo
+    'port-005': '#8b5cf6', // Violet / Família Demo
     'default': '#64748b',
   };
 
@@ -211,7 +211,7 @@ export const ComplianceBreachHistoryChart: React.FC<ComplianceBreachHistoryChart
             }
             rawExcess = rawDev > 0 ? rawDev * 60000 : 0;
           } else if (port.id === 'port-004') {
-            // Mariana Rios Offshore: sensível ao câmbio USD/BRL
+            // Carteira Exemplo Offshore: sensível ao câmbio USD/BRL
             if (dayIndex >= 6 && dayIndex <= 10) {
               rawDev = 4.2;
               rawSev = 'WARNING';
@@ -227,7 +227,7 @@ export const ComplianceBreachHistoryChart: React.FC<ComplianceBreachHistoryChart
             }
             rawExcess = rawDev > 0 ? rawDev * 28000 : 0;
           } else if (port.id === 'port-002') {
-            // Pedro Henrique Silveira: moderado, com stress pontual na abertura da curva (dia 17 a 19)
+            // Cliente Exemplo 2 Silveira: moderado, com stress pontual na abertura da curva (dia 17 a 19)
             if (dayIndex >= 17 && dayIndex <= 19) {
               rawDev = 3.4;
               rawSev = 'WARNING';
@@ -239,7 +239,7 @@ export const ComplianceBreachHistoryChart: React.FC<ComplianceBreachHistoryChart
             }
             rawExcess = rawDev > 0 ? rawDev * 15000 : 0;
           } else if (port.id === 'port-005') {
-            // Family Solaris: esporádico
+            // Família Demo: esporádico
             if (dayIndex === 12 || dayIndex === 13) {
               rawDev = 5.5;
               rawSev = 'CRITICAL';
@@ -251,7 +251,7 @@ export const ComplianceBreachHistoryChart: React.FC<ComplianceBreachHistoryChart
             }
             rawExcess = rawDev > 0 ? rawDev * 35000 : 0;
           } else {
-            // Clara Mendes (Conservadora) & outras: mantêm-se enquadradas
+            // Cliente Exemplo 3 (Conservadora) & outras: mantêm-se enquadradas
             rawDev = 0;
             rawSev = 'NORMAL';
             assetClass = 'Renda Fixa';
@@ -1013,7 +1013,7 @@ export const ComplianceBreachHistoryChart: React.FC<ComplianceBreachHistoryChart
             </span>
             <span className="text-[10px] text-slate-400 font-mono">Offshore D-7</span>
           </div>
-          <h4 className="text-xs font-bold text-white">Mariana Rios Offshore (PORT-004)</h4>
+          <h4 className="text-xs font-bold text-white">Carteira Exemplo Offshore (PORT-004)</h4>
           <p className="text-[11px] text-slate-300 leading-relaxed">
             Exposição internacional ultrapassou o teto em períodos de alta rápida do USD, entrando na faixa de atenção preventiva (+3.0 p.p.).
           </p>

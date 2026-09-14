@@ -185,13 +185,13 @@ export const MiniSparkline: React.FC<MiniSparklineProps> = ({
       {/* Footer labels: Quarter timeframe endpoints */}
       <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
         <span className="font-mono text-[10px]">
-          {data[0].label}: <strong className="text-slate-400">{valuePrefix}{data[0].value}{valueSuffix}</strong>
+          {data[0].label}: <strong className="text-slate-400">{valuePrefix}{data[0].value.toLocaleString("pt-BR")}{valueSuffix}</strong>
         </span>
         <span className="text-[9px] text-slate-500/80 uppercase tracking-wider font-semibold">
           Recharts • 3M
         </span>
         <span className="font-mono text-[10px] text-slate-300 font-medium">
-          {data[data.length - 1].label}: <strong className="text-white">{valuePrefix}{data[data.length - 1].value}{valueSuffix}</strong>
+          {data[data.length - 1].label}: <strong className="text-white">{valuePrefix}{data[data.length - 1].value.toLocaleString("pt-BR")}{valueSuffix}</strong>
         </span>
       </div>
     </div>

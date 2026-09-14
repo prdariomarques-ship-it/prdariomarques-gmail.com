@@ -1,5 +1,7 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import {
@@ -21,6 +23,7 @@ import {
   dispatchSecondaryAlertsRepo,
   dispatchTestSecondaryAlertRepo,
   clearSecondaryDispatchLogsRepo,
+  dispatchScheduledSummaryReportRepo,
 } from './src/server/notificationChannelsRepo';
 import { ComplianceAgent } from './src/server/complianceAgent';
 import { askComplianceAgent } from './src/server/geminiService';
@@ -34,8 +37,100 @@ const PORT = 3000;
 app.use(express.json());
 
 // ==========================================
+// CONTROLE DE AUTENTICAÇÃO E SESSÃO OBRIGATÓRIA (/api/*)
+// Bloqueia qualquer requisição sem Bearer token válido ou sessão ativa com HTTP 401
+// ==========================================
+const VALID_API_TOKENS = new Set<string>();
+if (process.env.API_TOKEN) {
+  VALID_API_TOKENS.add(process.env.API_TOKEN.trim());
+}
+
+// Armazenamento em memória de tokens de sessão efêmeros (Zero-Trust)
+const activeSessions = new Set<string>();
+
+function parseCookie(cookieHeader: string | undefined, name: string): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(new RegExp(`(^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function mintSession(res: express.Response): string {
+  const sessionToken = crypto.randomBytes(24).toString('hex');
+  activeSessions.add(sessionToken);
+  if (activeSessions.size > 1000) {
+    const oldest = activeSessions.values().next().value;
+    if (oldest) activeSessions.delete(oldest);
+  }
+  res.setHeader(
+    'Set-Cookie',
+    `FlowCore_session=${sessionToken}; Path=/; HttpOnly; SameSite=Strict`
+  );
+  return sessionToken;
+}
+
+app.use('/api', (req, res, next) => {
+  // Desativa qualquer cache em navegador ou proxy para rotas /api/*
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  // Permitir requisições OPTIONS pré-flight
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  // 1. Tenta validar via Header Authorization: Bearer <token>
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const parts = authHeader.trim().split(' ');
+    if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+      const token = parts[1].trim();
+      if (VALID_API_TOKENS.has(token) || activeSessions.has(token)) {
+        return next();
+      }
+      return res.status(401).json({
+        success: false,
+        error: 'Acesso não autorizado: Token de API incorreto ou revogado.',
+        code: 'INVALID_TOKEN',
+      });
+    }
+  }
+
+  // 2. Tenta validar via Cookie de Sessão Protegido FlowCore_session
+  const sessionCookie = parseCookie(req.headers.cookie, 'FlowCore_session');
+  if (sessionCookie && activeSessions.has(sessionCookie)) {
+    return next();
+  }
+
+  // 3. Tenta validar via Header X-API-Key
+  const apiKeyHeader = req.headers['x-api-key'];
+  if (typeof apiKeyHeader === 'string' && VALID_API_TOKENS.has(apiKeyHeader.trim())) {
+    return next();
+  }
+
+  // Nenhuma credencial válida fornecida -> 401 Unauthorized
+  return res.status(401).json({
+    success: false,
+    error: 'Acesso não autorizado: Autenticação obrigatória (Bearer token ou sessão ativa).',
+    code: 'AUTH_REQUIRED',
+  });
+});
+
+// ==========================================
 // API ROUTES
 // ==========================================
+
+// Endpoint GET /api/health - Verificação de conectividade e latência
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'FlowCore Sentinel Engine',
+    timestamp: Date.now(),
+    uptime: Math.round(process.uptime()),
+    version: '2.4.0',
+    mode: 'LIVE',
+  });
+});
 
 // Endpoint GET /api/policies
 app.get('/api/policies', (req, res) => {
@@ -376,7 +471,8 @@ app.post('/api/portfolios/simulate-shock', (req, res) => {
 // Endpoint GET /api/notifications/settings
 app.get('/api/notifications/settings', (req, res) => {
   try {
-    const settings = getNotificationSettingsRepo();
+    const officeId = (req.query.office_id || req.query.officeId) as string | undefined;
+    const settings = getNotificationSettingsRepo({ officeId });
     res.json({ success: true, settings });
   } catch (error) {
     console.error('Error getting notification settings:', error);
@@ -387,7 +483,8 @@ app.get('/api/notifications/settings', (req, res) => {
 // Endpoint POST /api/notifications/settings
 app.post('/api/notifications/settings', (req, res) => {
   try {
-    const updated = updateNotificationSettingsRepo(req.body);
+    const officeId = (req.body.office_id || req.body.officeId || req.query.office_id || req.query.officeId) as string | undefined;
+    const updated = updateNotificationSettingsRepo(req.body, officeId);
     res.json({ success: true, settings: updated, message: 'Configurações de canais de notificação atualizadas com sucesso' });
   } catch (error) {
     console.error('Error updating notification settings:', error);
@@ -415,6 +512,21 @@ app.post('/api/notifications/dispatches/test', (req, res) => {
   } catch (error) {
     console.error('Error sending test notification:', error);
     res.status(500).json({ success: false, error: 'Falha ao enviar notificação de teste' });
+  }
+});
+
+// Endpoint POST /api/notifications/scheduled-report/trigger
+// Dispara imediatamente o relatório agendado usando os dados reais de /api/alerts
+app.post('/api/notifications/scheduled-report/trigger', (req, res) => {
+  try {
+    const { officeId, force } = req.body || {};
+    const portfolios = getPortfoliosRepo();
+    const realAlerts = ComplianceAgent.evaluateAllPortfolios(portfolios);
+    const result = dispatchScheduledSummaryReportRepo(realAlerts, officeId, force !== false);
+    res.json(result);
+  } catch (error) {
+    console.error('Error triggering scheduled summary report:', error);
+    res.status(500).json({ success: false, error: 'Falha ao processar relatório diário agendado' });
   }
 });
 
@@ -473,14 +585,68 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: 'spa',
     });
+
+    // Injeta a sessão efêmera e o token de sessão de forma segura no HTML quando a página é acessada
+    app.use(async (req, res, next) => {
+      const url = req.originalUrl;
+      if (req.method === 'GET' && !url.startsWith('/api') && req.headers.accept?.includes('text/html')) {
+        try {
+          const sessionToken = mintSession(res);
+          const indexPath = path.join(process.cwd(), 'index.html');
+          let template = fs.readFileSync(indexPath, 'utf-8');
+          template = await vite.transformIndexHtml(url, template);
+          const tokenScript = `<script>window.__FLOWCORE_INITIAL_TOKEN__ = ${JSON.stringify(sessionToken)};</script>`;
+          template = template.replace('</head>', `${tokenScript}</head>`);
+          return res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+        } catch (e) {
+          return next(e);
+        }
+      }
+      next();
+    });
+
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const sessionToken = mintSession(res);
+      const indexPath = path.join(distPath, 'index.html');
+      let html = fs.readFileSync(indexPath, 'utf-8');
+      const tokenScript = `<script>window.__FLOWCORE_INITIAL_TOKEN__ = ${JSON.stringify(sessionToken)};</script>`;
+      html = html.replace('</head>', `${tokenScript}</head>`);
+      res.send(html);
     });
   }
+
+  // ==========================================
+  // SCHEDULER DE CONFORMIDADE EM BACKGROUND
+  // Checa a cada minuto se atingiu o horário configurado para o relatório periódico
+  // ==========================================
+  let lastDispatchedDateMinute = '';
+  setInterval(() => {
+    try {
+      const now = new Date();
+      const currentHM = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const currentDateKey = now.toLocaleDateString('pt-BR') + '_' + currentHM;
+
+      const settings = getNotificationSettingsRepo({ unmasked: true });
+      if (
+        settings.email.enabled &&
+        settings.email.scheduledReportEnabled &&
+        settings.email.scheduledReportTime === currentHM &&
+        lastDispatchedDateMinute !== currentDateKey
+      ) {
+        lastDispatchedDateMinute = currentDateKey;
+        const portfolios = getPortfoliosRepo();
+        const alerts = ComplianceAgent.evaluateAllPortfolios(portfolios);
+        const res = dispatchScheduledSummaryReportRepo(alerts, settings.officeId, false);
+        console.log(`[Scheduler FlowCore] Relatório diário de conformidade disparado:`, res.message);
+      }
+    } catch (err) {
+      console.error('[Scheduler FlowCore] Erro no loop de agendamento:', err);
+    }
+  }, 60000);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`FlowCore Server running on port ${PORT}`);

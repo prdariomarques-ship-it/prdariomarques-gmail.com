@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ShieldAlert,
   AlertTriangle,
   CheckCircle2,
   TrendingUp,
+  TrendingDown,
   ArrowRight,
   Sliders,
   DollarSign,
@@ -12,16 +13,27 @@ import {
   Award,
   Sparkles,
   Download,
+  FileText,
+  Check,
   Scroll,
   Building,
   Scale,
+  Activity,
+  Calendar,
+  Info,
 } from 'lucide-react';
-import { Portfolio, ComplianceAlert, AiExplanation } from '../types';
+import { Portfolio, ComplianceAlert, AiExplanation, DataMode, AlertComplianceSnapshot } from '../types';
 import { AIInsightCard } from './AIInsightCard';
 import { ComplianceBreachHistoryChart } from './ComplianceBreachHistoryChart';
+import { ThirtyDayComplianceHistoryChart } from './ThirtyDayComplianceHistoryChart';
+import { RebalancePerformanceIndexCard } from './RebalancePerformanceIndexCard';
+import { ImmediateLiquidityIndexCard } from './ImmediateLiquidityIndexCard';
+import { SelectedPortfolioHistoryChart } from './SelectedPortfolioHistoryChart';
 import { AssetClassFilterBar } from './AssetClassFilterBar';
 import { PortfolioSectorRiskHeatmap } from './PortfolioSectorRiskHeatmap';
-import { downloadPortfolioComplianceReportCSV } from '../utils/csvExport';
+import { downloadPortfolioComplianceReportCSV, downloadThirtyDayComplianceHistoryCSV } from '../utils/csvExport';
+import { downloadPortfolioComplianceReportPDF } from '../utils/pdfExport';
+import { generateThirtyDayComplianceSnapshots } from '../utils/complianceHistory';
 
 interface DashboardViewProps {
   portfolios: Portfolio[];
@@ -29,6 +41,7 @@ interface DashboardViewProps {
   onSelectPortfolio: (id: string) => void;
   onNavigateTab: (tab: 'dashboard' | 'owner' | 'alerts' | 'portfolios' | 'simulator' | 'agent') => void;
   onStartRebalance: (portfolioId: string) => void;
+  dataMode?: DataMode;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -37,15 +50,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectPortfolio,
   onNavigateTab,
   onStartRebalance,
+  dataMode = 'LIVE',
 }) => {
   const [aiInsightTab, setAiInsightTab] = useState<'COMPLIANCE' | 'OPPORTUNITIES'>('COMPLIANCE');
   const [showAllComplianceInsights, setShowAllComplianceInsights] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isExporting30DayCSV, setIsExporting30DayCSV] = useState<boolean>(false);
+  const [csv30DayExportSuccess, setCsv30DayExportSuccess] = useState<string | null>(null);
+  const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
+  const [pdfExportSuccess, setPdfExportSuccess] = useState<string | null>(null);
   const [selectedAssetClass, setSelectedAssetClass] = useState<string>('ALL');
-  const [selectedPortfolioForHeatmap, setSelectedPortfolioForHeatmap] = useState<string>(() => {
+  const [selectedDashboardPortfolioId, setSelectedDashboardPortfolioId] = useState<string>(() => {
     const crit = portfolios.find((p) => p.status === 'CRITICAL');
     return crit ? crit.id : portfolios[0]?.id || '';
   });
+
+  const thirtyDaySnapshots: AlertComplianceSnapshot[] = useMemo(() => {
+    return generateThirtyDayComplianceSnapshots(portfolios, alerts);
+  }, [portfolios, alerts]);
+
+  const handleDownload30DayHistoryCSV = () => {
+    setIsExporting30DayCSV(true);
+    try {
+      downloadThirtyDayComplianceHistoryCSV(thirtyDaySnapshots, portfolios, alerts);
+      setCsv30DayExportSuccess('Histórico de 30 dias exportado!');
+      setTimeout(() => setCsv30DayExportSuccess(null), 4000);
+    } catch (error) {
+      console.error('Erro ao gerar relatório CSV do histórico de 30 dias:', error);
+    } finally {
+      setTimeout(() => {
+        setIsExporting30DayCSV(false);
+      }, 1200);
+    }
+  };
 
   const handleDownloadReport = () => {
     setIsExporting(true);
@@ -69,6 +106,93 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalExcessBRL = alerts.reduce((sum, a) => sum + a.excessValueBRL, 0);
   const complianceRate = portfolios.length > 0 ? (normalPortfolios.length / portfolios.length) * 100 : 0;
 
+  // Histórico de snapshots de alertas dos últimos 7 dias (D-6 a D-0)
+  const sevenDaysSnapshots: AlertComplianceSnapshot[] = useMemo(() => {
+    const today = new Date();
+    const snapshots: AlertComplianceSnapshot[] = [];
+    const totalP = portfolios.length || 1;
+
+    // Métricas vivas de hoje (D-0)
+    const currentCriticals = alerts.filter((a) => a.severity === 'CRITICAL');
+    const currentWarnings = alerts.filter((a) => a.severity === 'WARNING');
+    const currentCompliantPortfolios = normalPortfolios.length;
+    const currentRate = Number(((currentCompliantPortfolios / totalP) * 100).toFixed(1));
+    const currentExcessBRL = totalExcessBRL;
+
+    // Baseline dos 6 dias anteriores alinhado aos eventos fiduciários e volatilidade
+    const baselinePastDeltas = [
+      { offset: 6, compliantCount: Math.min(totalP, Math.max(1, currentCompliantPortfolios + 1)), crit: Math.max(0, currentCriticals.length - 1), warn: 1, event: 'Abertura de ciclo fiduciário semanal' },
+      { offset: 5, compliantCount: Math.min(totalP, Math.max(1, currentCompliantPortfolios + 1)), crit: Math.max(0, currentCriticals.length - 1), warn: 1, event: 'Mercado estável e conformidade elevada' },
+      { offset: 4, compliantCount: Math.min(totalP, Math.max(1, currentCompliantPortfolios)), crit: currentCriticals.length, warn: 2, event: 'Oscilação cambial USD/BRL gerou atenção' },
+      { offset: 3, compliantCount: Math.max(1, currentCompliantPortfolios - 1), crit: currentCriticals.length + 1, warn: 2, event: 'Rali em renda variável gerou drift acima do teto' },
+      { offset: 2, compliantCount: Math.max(1, currentCompliantPortfolios - 1), crit: currentCriticals.length + 1, warn: 1, event: 'Comitê de risco e emissão de alertas aos assessores' },
+      { offset: 1, compliantCount: currentCompliantPortfolios, crit: currentCriticals.length, warn: currentWarnings.length, event: 'Início de rebalanceamento tático' },
+    ];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      const fullDateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const weekdayStr = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+      const dayLabel = i === 0 ? 'Hoje' : `${weekdayStr.charAt(0).toUpperCase() + weekdayStr.slice(1)} ${dateStr}`;
+
+      if (i === 0) {
+        snapshots.push({
+          date: dateStr,
+          fullDate: fullDateStr,
+          dayLabel,
+          timestamp: d.getTime(),
+          totalPortfolios: totalP,
+          compliantPortfolios: currentCompliantPortfolios,
+          criticalAlerts: currentCriticals.length,
+          warningAlerts: currentWarnings.length,
+          complianceRate: currentRate,
+          totalExcessBRL: currentExcessBRL,
+          marketContext: 'Aferição em tempo real pelo motor Sentinel CVM 175',
+        });
+      } else {
+        const hist = baselinePastDeltas.find((h) => h.offset === i);
+        const compCount = hist ? hist.compliantCount : currentCompliantPortfolios;
+        const rate = Number(((compCount / totalP) * 100).toFixed(1));
+        const crit = hist ? hist.crit : currentCriticals.length;
+        const warn = hist ? hist.warn : currentWarnings.length;
+        const excess = Math.max(0, currentExcessBRL * (crit > 0 ? (crit / Math.max(1, currentCriticals.length)) : 0.5));
+
+        snapshots.push({
+          date: dateStr,
+          fullDate: fullDateStr,
+          dayLabel,
+          timestamp: d.getTime(),
+          totalPortfolios: totalP,
+          compliantPortfolios: compCount,
+          criticalAlerts: crit,
+          warningAlerts: warn,
+          complianceRate: rate,
+          totalExcessBRL: excess,
+          marketContext: hist?.event || 'Snapshot fiduciário diário',
+        });
+      }
+    }
+
+    return snapshots;
+  }, [portfolios, alerts, normalPortfolios.length, totalExcessBRL]);
+
+  const handleDownloadReportPDF = () => {
+    setIsExportingPDF(true);
+    try {
+      downloadPortfolioComplianceReportPDF(portfolios, alerts, sevenDaysSnapshots);
+      setPdfExportSuccess('Relatório PDF exportado!');
+      setTimeout(() => setPdfExportSuccess(null), 4000);
+    } catch (error) {
+      console.error('Erro ao gerar relatório PDF de conformidade:', error);
+    } finally {
+      setTimeout(() => {
+        setIsExportingPDF(false);
+      }, 1200);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner: Regras do ComplianceAgent */}
@@ -89,16 +213,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
+            {/* Botão de Exportação de Relatório Resumido em PDF */}
+            <button
+              id="download-compliance-pdf-btn"
+              onClick={handleDownloadReportPDF}
+              disabled={isExportingPDF}
+              title="Gerar e baixar relatório executivo resumido de conformidade em formato PDF (A4)"
+              className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold transition shadow-sm border border-sky-500/50 cursor-pointer disabled:opacity-50"
+            >
+              <FileText className={`w-3.5 h-3.5 mr-1.5 ${isExportingPDF ? 'animate-spin' : ''}`} />
+              <span>{isExportingPDF ? 'Gerando PDF...' : 'Baixar Relatório PDF'}</span>
+            </button>
+
+            {/* Botão de Exportar Relatório (CSV com histórico de 30 dias exibido no gráfico) */}
+            <button
+              id="download-30day-compliance-report-btn"
+              onClick={handleDownload30DayHistoryCSV}
+              disabled={isExporting30DayCSV}
+              title="Exportar arquivo CSV com o histórico de conformidade dos últimos 30 dias exibido no gráfico"
+              className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-sm border border-emerald-500/50 cursor-pointer disabled:opacity-50"
+            >
+              <Download className={`w-3.5 h-3.5 mr-1.5 ${isExporting30DayCSV ? 'animate-bounce' : ''}`} />
+              <span>{isExporting30DayCSV ? 'Gerando CSV...' : 'Exportar Relatório'}</span>
+            </button>
+
+            {/* Botão de Exportação de Carteiras em CSV */}
             <button
               id="download-compliance-report-btn"
               onClick={handleDownloadReport}
               disabled={isExporting}
               title="Exportar sumário de conformidade das carteiras em arquivo CSV"
-              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-sm border border-emerald-500/50 cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold transition shadow-sm border border-slate-700 cursor-pointer disabled:opacity-50"
             >
               <Download className={`w-3.5 h-3.5 mr-1.5 ${isExporting ? 'animate-bounce' : ''}`} />
-              <span>{isExporting ? 'Gerando CSV...' : 'Download Report'}</span>
+              <span>{isExporting ? 'Gerando...' : 'Exportar Carteiras (CSV)'}</span>
             </button>
+
+            {csv30DayExportSuccess && (
+              <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold">
+                <Check className="w-3 h-3 mr-1 text-emerald-400" />
+                {csv30DayExportSuccess}
+              </span>
+            )}
+
+            {pdfExportSuccess && (
+              <span className="inline-flex items-center px-2 py-1 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[11px] font-semibold">
+                <Check className="w-3 h-3 mr-1 text-sky-400" />
+                {pdfExportSuccess}
+              </span>
+            )}
 
             <button
               onClick={() => onNavigateTab('owner')}
@@ -139,7 +302,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="text-xs text-slate-400 mt-1 flex items-center justify-between">
               <span>{portfolios.length} carteiras monitoradas</span>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">LIVE DATA</span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                  dataMode === 'LIVE'
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                    : dataMode === 'SIMULATION'
+                    ? 'text-cyan-300 bg-cyan-500/20 border-cyan-400/40 animate-pulse'
+                    : 'text-purple-300 bg-purple-500/20 border-purple-400/40 animate-pulse'
+                }`}
+              >
+                {dataMode === 'LIVE'
+                  ? 'LIVE DATA'
+                  : dataMode === 'SIMULATION'
+                  ? 'SIMULATION'
+                  : 'PROJECTION'}
+              </span>
             </div>
           </div>
         </div>
@@ -201,6 +378,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* ÍNDICE DE LIQUIDEZ IMEDIATA DO PORTFÓLIO CONSOLIDADO (D+0 VS. D+1 OU SUPERIOR) */}
+      <ImmediateLiquidityIndexCard
+        portfolios={portfolios}
+        onSelectPortfolio={onSelectPortfolio}
+        onStartRebalance={onStartRebalance}
+      />
+
+      {/* GRÁFICO DE LINHA COM RECHARTS: EVOLUÇÃO HISTÓRICA DO PERCENTUAL DE CONFORMIDADE (ÚLTIMOS 30 DIAS) */}
+      <ThirtyDayComplianceHistoryChart
+        portfolios={portfolios}
+        alerts={alerts}
+        snapshots={thirtyDaySnapshots}
+        onExportReport={handleDownload30DayHistoryCSV}
+      />
+
+      {/* EVOLUÇÃO HISTÓRICA DO PERCENTUAL DE CONFORMIDADE DA CARTEIRA SELECIONADA */}
+      <SelectedPortfolioHistoryChart
+        portfolios={portfolios}
+        alerts={alerts}
+        selectedPortfolioId={selectedDashboardPortfolioId}
+        onSelectPortfolio={setSelectedDashboardPortfolioId}
+      />
+
       {/* ADVISOR EXPERIENCE: Actionable Priority Cards */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -228,7 +428,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">5 dias em desvio</span>
               </div>
-              <h4 className="text-xs font-bold text-white">Rebalancear João Silva Multi-Mercado</h4>
+              <h4 className="text-xs font-bold text-white">Rebalancear Carteira Cliente Exemplo 1</h4>
               <p className="text-[11px] text-slate-300 leading-relaxed">
                 Renda Variável atingiu <strong className="text-rose-400">43.0%</strong> (Teto IPS: 35.0%). Excesso de R$ 1.48M requer desinvestimento tático.
               </p>
@@ -251,7 +451,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">2 dias em desvio</span>
               </div>
-              <h4 className="text-xs font-bold text-white">Revisar Mariana Rios Offshore</h4>
+              <h4 className="text-xs font-bold text-white">Revisar Carteira Exemplo Offshore</h4>
               <p className="text-[11px] text-slate-300 leading-relaxed">
                 Ativos Internacionais em <strong className="text-amber-400">23.0%</strong> (Teto IPS: 20.0%). Desvio de +3.0 p.p. se aproxima do gatilho crítico de 5 p.p.
               </p>
@@ -290,6 +490,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* ÍNDICE DE PERFORMANCE DE REBALANCEAMENTO COM GRÁFICO DE BARRAS COMPARATIVO */}
+      <RebalancePerformanceIndexCard
+        portfolios={portfolios}
+        alerts={alerts}
+        onSelectPortfolio={onSelectPortfolio}
+        onStartRebalance={onStartRebalance}
+      />
+
       {/* FILTRO INTERATIVO POR CLASSE DE ATIVOS (RENDA FIXA, AÇÕES, MULTIMERCADO, INTERNACIONAL, CAIXA) */}
       <AssetClassFilterBar
         selectedAssetClass={selectedAssetClass}
@@ -308,7 +516,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onSelectAssetClass={setSelectedAssetClass}
       />
 
-      {/* FLOWCORE AI INSIGHT ENGINE: Prescriptive Intelligence in 6 Pillars */}
+      {/* FlowCore AI INSIGHT ENGINE: Prescriptive Intelligence in 6 Pillars */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
           <div>
@@ -373,7 +581,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   title={`Recomendação de Compliance • ${alert.portfolioName}`}
                   subtitle={`Titular: ${alert.clientName} • Classe: ${alert.assetClass}`}
                   category="COMPLIANCE"
-                  severity={alert.severity}
+                  severity={alert.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING'}
                   ruleSource={alert.ruleSource}
                   rule_source={alert.ruleSource}
                   policyId={alert.policyId}
@@ -470,7 +678,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <AIInsightCard
               id="opportunity-credit-arbitrage"
               insight={{
-                what: 'Spread atípico de +115 bps acima da NTN-B de referência em Debêntures Incentivadas AAA de infraestrutura com isenção fiscal para Roberto Matos.',
+                what: 'Spread atípico de +115 bps acima da NTN-B de referência em Debêntures Incentivadas AAA de infraestrutura com isenção fiscal para Cliente Demo C.',
                 why: 'Emissão primária com sobreoferta institucional de lote de energia gerou taxa líquida equivalente a 142% do CDI para pessoa física.',
                 impact: 'Ganho líquido anual adicional projetado em R$ 94.200 em relação a fundos DI com come-cotas, mantendo rating de crédito AAA.',
                 action: 'Substituir R$ 650.000 de LFT (Tesouro Selic) por lote primário de Debêntures Incentivadas AAA com duration de 4.2 anos.',
@@ -478,15 +686,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 source: 'Lei nº 12.431/2011 (art. 2º) • Política Interna de Crédito Privado POL-RF-09 • Resolução CVM 175',
               }}
               title="Arbitragem de Spread em Crédito Isento (AAA)"
-              subtitle="Carteira Roberto Matos • Perfil Private Wealth"
+              subtitle="Carteira Cliente Demo C • Perfil Private Wealth"
               category="OPPORTUNITY"
               severity="INFO"
               ruleSource="POLITICA_INTERNA"
               rule_source="POLITICA_INTERNA"
               policyId="POL-RF-09"
               policy_id="POL-RF-09"
-              portfolioName="Roberto Matos"
-              clientName="Roberto Matos"
+              portfolioName="Cliente Demo C"
+              clientName="Cliente Demo C"
               onApplyAction={() => onSelectPortfolio('port-005')}
               actionLabel="Ver Carteira & Alocar"
               collapsible={true}
@@ -497,7 +705,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <AIInsightCard
               id="opportunity-fii-discount"
               insight={{
-                what: 'Desconto patrimonial de 14.8% (P/VP 0.852) em Fundos Imobiliários Prime de galpões logísticos com vacância zero na carteira de Mariana Rios.',
+                what: 'Desconto patrimonial de 14.8% (P/VP 0.852) em Fundos Imobiliários Prime de galpões logísticos com vacância zero na carteira de Carteira Exemplo.',
                 why: 'Volatilidade momentânea de juros futuros na B3 abriu spread incomum entre a cota negociada em bolsa e o laudo de avaliação dos galpões.',
                 impact: 'Dividend yield isento anualizado projetado em 10.1% a.a. somado ao potencial de valorização de +14% na reprecificação do P/VP para 1.00.',
                 action: 'Rebalancear R$ 420.000 do excedente de liquidez conservadora para compras fracionadas em 2 FIIs de logística grau de investimento.',
@@ -505,15 +713,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 source: 'Lei nº 8.668/1993 (art. 16-A) • Mandato Bilateral IPS-MR-2023 • Resolução CVM 175',
               }}
               title="Rebalanceamento Tático em FIIs com Desconto P/VP"
-              subtitle="Carteira Mariana Rios • Perfil Offshore & FIIs"
+              subtitle="Carteira Carteira Exemplo • Perfil Offshore & FIIs"
               category="OPPORTUNITY"
               severity="INFO"
               ruleSource="MANDATO_CLIENTE"
               rule_source="MANDATO_CLIENTE"
               policyId="IPS-MR-2023"
               policy_id="IPS-MR-2023"
-              portfolioName="Mariana Rios"
-              clientName="Mariana Rios"
+              portfolioName="Carteira Exemplo"
+              clientName="Carteira Exemplo"
               onApplyAction={() => onSelectPortfolio('port-004')}
               actionLabel="Inspecionar Posições"
               collapsible={true}
@@ -527,9 +735,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <PortfolioSectorRiskHeatmap
         portfolios={portfolios}
         alerts={alerts}
-        selectedPortfolioId={selectedPortfolioForHeatmap}
+        selectedPortfolioId={selectedDashboardPortfolioId}
         onSelectPortfolio={(id) => {
-          setSelectedPortfolioForHeatmap(id);
+          setSelectedDashboardPortfolioId(id);
           onSelectPortfolio(id);
         }}
         onStartRebalance={onStartRebalance}

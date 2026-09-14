@@ -235,7 +235,7 @@ export const AIInsightCard: React.FC<AIInsightCardProps> = ({
 
   // Copy full structured audit insight
   const handleCopyReport = () => {
-    let report = `=== FLOWCORE AI COMPLIANCE INSIGHT ===\n`;
+    let report = `=== FlowCore AI COMPLIANCE INSIGHT ===\n`;
     report += `WHAT: ${effectiveWhat}\n`;
     report += `WHY: ${effectiveWhy}\n`;
     report += `IMPACT: ${effectiveImpact}\n`;

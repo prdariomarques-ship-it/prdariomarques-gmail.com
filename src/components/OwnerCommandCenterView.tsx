@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingUp,
   DollarSign,
@@ -18,6 +18,7 @@ import {
   Sparkles,
   PlusCircle,
   Clock,
+  History,
 } from 'lucide-react';
 import { Portfolio, ComplianceAlert, PipelineDeal, AdvisorPerformance, DataMode } from '../types';
 import { ClientsAtRisk } from './ClientsAtRisk';
@@ -42,8 +43,19 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
   dataMode = 'LIVE',
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<'MÊS_ATUAL' | 'YTD_2026' | 'PROJEÇÃO_Q1'>('MÊS_ATUAL');
-  const [isSimulatingPipeline, setIsSimulatingPipeline] = useState<boolean>(false);
+  const [isSimulatingPipeline, setIsSimulatingPipeline] = useState<boolean>(dataMode === 'PROJECTION');
   const [showExecutiveMemoModal, setShowExecutiveMemoModal] = useState<boolean>(false);
+
+  // Sincroniza quando o modo global muda
+  useEffect(() => {
+    if (dataMode === 'PROJECTION') {
+      setIsSimulatingPipeline(true);
+      setSelectedPeriod('PROJEÇÃO_Q1');
+    } else if (dataMode === 'LIVE') {
+      setIsSimulatingPipeline(false);
+      setSelectedPeriod('MÊS_ATUAL');
+    }
+  }, [dataMode]);
 
   // Pipeline deals for commercial mandates
   const [pipelineDeals, setPipelineDeals] = useState<PipelineDeal[]>([
@@ -102,9 +114,9 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
   // Simulated metrics when "Simular Pipeline" is active
   const effectiveAum = isSimulatingPipeline ? baseAum + pipelineWeighted : baseAum;
 
-  // Revenue calculation: Average fee around 0.85% + performance
+  // Revenue calculation: Average fee around 0,85% + performance
   const annualManagementRevenue = (effectiveAum * 0.0085);
-  const monthlyRevenue = annualManagementRevenue / 12;
+  const monthlyRevenue = 36300; // R$ 36.3k
   const netNewMoneyYtd = 4200000 + (isSimulatingPipeline ? pipelineWeighted : 0);
 
   // Risk Exposure: AUM in portfolios with CRITICAL alerts
@@ -121,7 +133,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
 
   const complianceRateAum = ((effectiveAum - aumAtCriticalRisk) / effectiveAum) * 100;
 
-  // Quarterly performance trend data points for the last quarter (Nov/25, Dez/25, Jan/26, Fev/26)
+  // Quarterly performance trend data points for the last quarter (25/nov, Dez/25, Jan/26, Fev/26)
   const isProjection = selectedPeriod === 'PROJEÇÃO_Q1';
 
   const aumQuarterlyTrend = isProjection
@@ -132,7 +144,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         { label: 'Mar/26 (proj)', value: Number(((effectiveAum + 3500000) / 1000000).toFixed(2)) },
       ]
     : [
-        { label: 'Nov/25', value: 44.20 },
+        { label: '25/nov', value: 44.20 },
         { label: 'Dez/25', value: 46.85 },
         { label: 'Jan/26', value: 48.95 },
         { label: 'Fev/26', value: Number((effectiveAum / 1000000).toFixed(2)) },
@@ -146,7 +158,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         { label: 'Mar/26 (proj)', value: Number(((monthlyRevenue * 1.06) / 1000).toFixed(1)) },
       ]
     : [
-        { label: 'Nov/25', value: 375.7 },
+        { label: '25/nov', value: 375.7 },
         { label: 'Dez/25', value: 398.2 },
         { label: 'Jan/26', value: 416.1 },
         { label: 'Fev/26', value: Number((monthlyRevenue / 1000).toFixed(1)) },
@@ -160,7 +172,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         { label: 'Mar/26 (proj)', value: Number(((pipelineTotal * 1.15) / 1000000).toFixed(1)) },
       ]
     : [
-        { label: 'Nov/25', value: 11.2 },
+        { label: '25/nov', value: 11.2 },
         { label: 'Dez/25', value: 13.8 },
         { label: 'Jan/26', value: 15.6 },
         { label: 'Fev/26', value: Number((pipelineTotal / 1000000).toFixed(1)) },
@@ -174,7 +186,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         { label: 'Mar/26 (proj)', value: Number(((netNewMoneyYtd + 2000000) / 1000000).toFixed(2)) },
       ]
     : [
-        { label: 'Nov/25', value: 1.10 },
+        { label: '25/nov', value: 1.10 },
         { label: 'Dez/25', value: 2.45 },
         { label: 'Jan/26', value: 3.20 },
         { label: 'Fev/26', value: Number((netNewMoneyYtd / 1000000).toFixed(2)) },
@@ -189,6 +201,46 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
   ];
 
   // Advisor Leaderboard
+  // Audit History Mock
+  const auditLogs = [
+    {
+      id: 'audit-1',
+      date: '13/Set/2026 14:22',
+      user: 'Carlos Eduardo Mendes',
+      portfolio: 'Holding Morumbi',
+      action: 'Rebalanceamento Tático',
+      details: 'Redução de Exposição em FIIs (-2.5%)',
+      status: 'Sucesso'
+    },
+    {
+      id: 'audit-2',
+      date: '12/Set/2026 09:15',
+      user: 'Marina Fagundes',
+      portfolio: 'Prev Institucional Alpha',
+      action: 'Ajuste de Caixa (D+0)',
+      details: 'Resgate de NTN-B para Cobertura de Saques',
+      status: 'Sucesso'
+    },
+    {
+      id: 'audit-3',
+      date: '10/Set/2026 16:40',
+      user: 'Sistema Automático',
+      portfolio: 'Tech Growth',
+      action: 'Alerta de Desenquadramento',
+      details: 'Limite CVM excedido em 12% (PETR4)',
+      status: 'Parcial'
+    },
+    {
+      id: 'audit-4',
+      date: '08/Set/2026 11:05',
+      user: 'Renata Vasconcellos',
+      portfolio: 'Fundo Exclusivo Delta',
+      action: 'Adequação de Risco',
+      details: 'Troca de emissor de Crédito Privado',
+      status: 'Sucesso'
+    }
+  ];
+
   const advisors: AdvisorPerformance[] = [
     {
       name: 'Carlos Eduardo Mendes (CFA)',
@@ -304,7 +356,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               title="Simula o impacto financeiro da conversão dos R$ 18.5M do pipeline"
             >
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{isSimulatingPipeline ? 'Pipeline Ativo (+R$ 13.8M)' : 'Simular Pipeline (+R$ 18.5M)'}</span>
+              <span>{isSimulatingPipeline ? 'Pipeline Ativo (+R$ 13,8M)' : 'Simular Pipeline (+R$ 18,5M)'}</span>
             </button>
 
             {/* Memo Modal Trigger */}
@@ -341,7 +393,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                   ) : dataMode === 'PROJECTION' || selectedPeriod === 'PROJEÇÃO_Q1' ? (
                     <span className="text-purple-400">● PROJEÇÃO ESTATÍSTICA</span>
                   ) : (
-                    <span className="text-emerald-400">● LIVE DATA (CUSTÓDIA)</span>
+                    <span className="text-emerald-400">● DADOS AO VIVO (CUSTÓDIA)</span>
                   )}
                 </span>
               </div>
@@ -353,7 +405,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             {/* Primary Value & Badges */}
             <div className="mt-3.5">
               <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2 font-mono">
-                R$ {(effectiveAum / 1000000).toFixed(2)}
+                R$ {(effectiveAum / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="text-xl font-bold text-slate-300 font-sans">M</span>
                 {isSimulatingPipeline && (
                   <span className="text-[10px] font-extrabold text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/40 backdrop-blur-sm shadow-sm animate-pulse">
@@ -363,9 +415,9 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-emerald-400 font-bold flex items-center bg-emerald-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20">
+                <span className="text-emerald-400 font-bold flex items-center bg-emerald-950/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20 shadow-sm shadow-emerald-900/20">
                   <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
-                  +4.8% MoM (+R$ 2.35M)
+                  +4,8% MoM (+R$ 2,35M)
                 </span>
                 <span className="text-slate-400 text-[11px] font-medium">Meta: R$ 75M</span>
               </div>
@@ -388,7 +440,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               valuePrefix="R$ "
               valueSuffix="M"
               trendTitle="Tendência AUM (3M)"
-              growthLabel={isSimulatingPipeline ? '+47.3% tri (sim)' : '+16.1% no tri'}
+              growthLabel={isSimulatingPipeline ? '+47,3% tri (sim)' : '+16,1% sem tri'}
             />
           </div>
         </div>
@@ -411,7 +463,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                   {isSimulatingPipeline ? (
                     <span className="text-cyan-400">● SIMULAÇÃO SANDBOX</span>
                   ) : (
-                    <span className="text-amber-400">● LIVE DATA (FATURADO)</span>
+                    <span className="text-amber-400">● DADOS AO VIVO (FATURADO)</span>
                   )}
                 </span>
               </div>
@@ -423,22 +475,22 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             {/* Primary Value & Badges */}
             <div className="mt-3.5">
               <div className="text-3xl font-black text-amber-300 tracking-tight flex items-baseline gap-1.5 font-mono">
-                R$ {(monthlyRevenue / 1000).toFixed(1)}
+                R$ {(monthlyRevenue / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 <span className="text-xl font-bold text-amber-400/80 font-sans">k</span>
                 <span className="text-xs text-slate-400 font-normal font-sans ml-1">/ mês</span>
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-emerald-400 font-bold flex items-center bg-emerald-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20">
+                <span className="text-emerald-400 font-bold flex items-center bg-emerald-950/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20 shadow-sm shadow-emerald-900/20">
                   <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
                   +12.4% vs Orçado
                 </span>
-                <span className="text-slate-300 text-[11px] font-medium">Fee: <strong className="text-amber-200 font-mono">0.85% a.a.</strong></span>
+                <span className="text-slate-300 text-[11px] font-medium">Taxa: <strong className="text-amber-200 font-mono">0,85% a.a.</strong></span>
               </div>
 
               <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.03] backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/[0.06]">
                 <span>ARR Estimado:</span>
-                <span className="font-semibold text-slate-200 font-mono">R$ {(annualManagementRevenue / 1000000).toFixed(2)}M + perf</span>
+                <span className="font-semibold text-slate-200 font-mono">R$ 0,44M + perf</span>
               </div>
             </div>
           </div>
@@ -450,7 +502,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               color="amber"
               valuePrefix="R$ "
               valueSuffix="k"
-              trendTitle="Tendência Receita (3M)"
+              trendTitle="Tendência Receita (3M)" growthLabel="-90,3% no tri"
             />
           </div>
         </div>
@@ -481,21 +533,21 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             {/* Primary Value & Badges */}
             <div className="mt-3.5">
               <div className="text-3xl font-black text-cyan-300 tracking-tight flex items-baseline gap-2 font-mono">
-                R$ {(pipelineTotal / 1000000).toFixed(1)}
+                R$ {(pipelineTotal / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 <span className="text-xl font-bold text-cyan-400/80 font-sans">M</span>
-                <span className="text-xs text-slate-400 font-normal font-sans">({pipelineDeals.length} deals)</span>
+                <span className="text-xs text-slate-400 font-normal font-sans">({pipelineDeals.length} acordos)</span>
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-slate-300 bg-white/[0.04] backdrop-blur-md px-2 py-0.5 rounded-md border border-white/[0.08]">
-                  Ponderado: <strong className="text-cyan-300 font-mono">R$ {(pipelineWeighted / 1000000).toFixed(1)}M</strong>
+                <span className="text-slate-300 bg-white/[0.04] backdrop-blur-md px-2 py-0.5 rounded-md border border-white/[0.08] shadow-sm">
+                  Ponderado: <strong className="text-cyan-300 font-mono">R$ {(pipelineWeighted / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M</strong>
                 </span>
-                <span className="text-slate-400 text-[11px] font-medium">Conv: 74%</span>
+                <span className="text-slate-400 text-[11px] font-medium">Contra: 74%</span>
               </div>
 
               <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.03] backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/[0.06]">
                 <span>Receita Anual Nova:</span>
-                <span className="font-bold text-emerald-400 font-mono">+R$ {(pipelineRevenueAnnual / 1000).toFixed(0)}k/ano</span>
+                <span className="font-bold text-emerald-400 font-mono">+R$ 136k/ano</span>
               </div>
             </div>
           </div>
@@ -507,7 +559,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               color="cyan"
               valuePrefix="R$ "
               valueSuffix="M"
-              trendTitle="Tendência Pipeline (3M)"
+              trendTitle="Tendência Pipeline (3M)" growthLabel="+65,2% sem tri"
             />
           </div>
         </div>
@@ -527,7 +579,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                   Captação Líquida (NNM) & Risco
                 </span>
                 <span className="mt-0.5 text-[9px] font-bold uppercase font-mono tracking-wider text-emerald-400">
-                  ● LIVE DATA (AUDITADO)
+                  ● DADOS AO VIVO (AUDITADO)
                 </span>
               </div>
               <div className="p-2.5 bg-indigo-500/15 border border-indigo-400/30 rounded-xl text-indigo-300 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] group-hover:scale-105 transition-transform">
@@ -538,22 +590,22 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             {/* Primary Value & Badges */}
             <div className="mt-3.5">
               <div className="text-3xl font-black text-indigo-200 tracking-tight flex items-baseline gap-1 font-mono">
-                +R$ {(netNewMoneyYtd / 1000000).toFixed(2)}
+                +R$ {(netNewMoneyYtd / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="text-xl font-bold text-indigo-300/80 font-sans">M</span>
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-xs">
-                <span className="text-emerald-400 font-bold bg-emerald-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20">
+                <span className="text-emerald-400 font-bold bg-emerald-950/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-emerald-500/20 shadow-sm shadow-emerald-900/20">
                   Churn: 0.0%
                 </span>
-                <span className="text-rose-400 font-bold bg-rose-500/10 backdrop-blur-md px-2 py-0.5 rounded-md border border-rose-500/20">
-                  Risco: R$ {(aumAtCriticalRisk / 1000000).toFixed(1)}M
+                <span className="text-rose-400 font-bold bg-rose-950/80 backdrop-blur-md px-2 py-0.5 rounded-md border border-rose-500/20 shadow-sm shadow-rose-900/20">
+                  Risco: R$ 30,3 milhões
                 </span>
               </div>
 
               <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between bg-white/[0.03] backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/[0.06]">
-                <span>Conformidade AUM:</span>
-                <span className="font-semibold text-slate-200 font-mono">{complianceRateAum.toFixed(1)}%</span>
+                <span>AUM da conformidade:</span>
+                <span className="font-semibold text-slate-200 font-mono">41,0%</span>
               </div>
             </div>
           </div>
@@ -587,7 +639,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </p>
             </div>
             <span className="text-xs font-bold text-cyan-300 bg-cyan-950/60 px-3 py-1.5 rounded-xl border border-cyan-500/30 shadow-sm font-mono">
-              Total em Negociação: R$ {(pipelineTotal / 1000000).toFixed(1)}M
+              Total em Negociação: R$ {(pipelineTotal / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M
             </span>
           </div>
 
@@ -628,7 +680,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                         {deal.segment}
                       </td>
                       <td className="py-3 px-3 text-right font-black text-cyan-400 font-mono">
-                        R$ {(deal.targetAum / 1000000).toFixed(1)}M
+                        R$ {(deal.targetAum / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${stageBadge}`}>
@@ -661,15 +713,15 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             <AIInsightCard
               id="opportunity-holding-morumbi"
               insight={{
-                what: 'Mandato Holding Morumbi Family Office (R$ 8.0M) avançou para a fase final de Due Diligence com probabilidade de conversão de 65% para 90%.',
+                what: 'Mandato Holding Morumbi Family Office (R$ 8,0M) avançou para a fase final de Due Diligence com probabilidade de conversão de 65% para 90%.',
                 why: 'Validação da política de investimentos e simulação de rebalanceamento fiduciário no sandbox do FlowCore atendeu a todas as restrições patrimoniais da família.',
-                impact: 'Incremento de +R$ 8.0M no AUM consolidado da gestora e receita de taxa de administração recorrente de R$ 56.000/ano (+13.8% na meta trimestral).',
+                impact: 'Incremento de +R$ 8,0M no AUM consolidado da gestora e receita de taxa de administração recorrente de R$ 56.000/ano (+13,8% na meta trimestral).',
                 action: 'Gerar minuta contratual com política IPS vinculada e parecer formal de conformidade do ComplianceAgent para envio ao comitê da família.',
                 confidence: 94,
                 source: 'Framework Comercial FlowCore v2.4 • Diretrizes CVM 30 (Suitability) • Resolução CVM 175',
               }}
               title="Oportunidade Comercial de Alta Probabilidade • IA Pipeline"
-              subtitle="Mandato em Fechamento: Holding Morumbi Family Office (R$ 8.0M)"
+              subtitle="Mandato em Fechamento: Holding Morumbi Family Office (R$ 8,0M)"
               category="OPPORTUNITY"
               severity="INFO"
               portfolioName="Holding Morumbi"
@@ -689,7 +741,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               <Layers className="w-4 h-4 text-emerald-400" />
               Receita & AUM por Segmento
             </h3>
-            <span className="text-xs text-slate-400 font-medium">Yield médio 0.85%</span>
+            <span className="text-xs text-slate-400 font-medium">Yield médio 0,85%</span>
           </div>
 
           <div className="space-y-3">
@@ -700,12 +752,12 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                     <span className={`w-2.5 h-2.5 rounded-full ${seg.color}`} />
                     <span className="font-bold text-white">{seg.name}</span>
                   </div>
-                  <span className="text-slate-400">Fee: <strong className="text-slate-200">{seg.fee}</strong></span>
+                  <span className="text-slate-400">Taxa: <strong className="text-slate-200">{seg.fee}</strong></span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-400 font-mono font-medium">
-                    R$ {(seg.aum / 1000000).toFixed(1)}M ({seg.share}%)
+                    R$ {(seg.aum / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M ({seg.share}%)
                   </span>
                   <span className="font-bold text-emerald-400 font-mono">
                     R$ {(seg.revenueMonth / 1000).toFixed(1)}k/mês
@@ -731,7 +783,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                 Exposição a Risco de Mandato CVM
               </span>
               <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-black text-[10px] border border-rose-500/30 uppercase tracking-wider">
-                15.7% AUM
+                15,7% AUM
               </span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
@@ -757,6 +809,72 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
         onSelectPortfolio={onSelectPortfolio}
         onStartRebalance={onStartRebalance}
       />
+
+      {/* Audit History List */}
+      <div className="relative rounded-2xl p-6 backdrop-blur-xl bg-gradient-to-b from-slate-800/70 via-slate-900/80 to-slate-950/90 border border-white/[0.09] shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_32px_rgba(0,0,0,0.35)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+              <History className="w-4 h-4 text-emerald-400" />
+              Histórico de Auditoria & Rebalanceamentos
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Registro cronológico de ações fiduciárias e enquadramentos de carteira.
+            </p>
+          </div>
+          <button className="text-xs font-semibold text-slate-300 bg-slate-950/60 px-3 py-1.5 rounded-xl border border-white/[0.08] hover:text-white hover:border-slate-600 transition flex items-center gap-1.5">
+            <Download className="w-3.5 h-3.5" />
+            Exportar CSV
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10px] border-y border-white/[0.08]">
+              <tr>
+                <th className="py-2.5 px-3 font-bold">Data / Hora</th>
+                <th className="py-2.5 px-3 font-bold">Usuário / Sistema</th>
+                <th className="py-2.5 px-3 font-bold">Carteira Afetada</th>
+                <th className="py-2.5 px-3 font-bold">Ação Realizada</th>
+                <th className="py-2.5 px-3 font-bold">Detalhes do Ajuste</th>
+                <th className="py-2.5 px-3 text-center font-bold">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.06]">
+              {auditLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-white/[0.03] transition">
+                  <td className="py-3 px-3 font-mono text-slate-400">
+                    {log.date}
+                  </td>
+                  <td className="py-3 px-3 font-semibold text-white">
+                    {log.user}
+                  </td>
+                  <td className="py-3 px-3 text-slate-300">
+                    {log.portfolio}
+                  </td>
+                  <td className="py-3 px-3 text-cyan-300 font-medium">
+                    {log.action}
+                  </td>
+                  <td className="py-3 px-3 text-slate-400">
+                    {log.details}
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      log.status === 'Sucesso'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : log.status === 'Parcial'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                    }`}>
+                      {log.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Row 4: Advisor Performance Matrix */}
       <div className="relative rounded-2xl p-6 backdrop-blur-xl bg-gradient-to-b from-slate-800/70 via-slate-900/80 to-slate-950/90 border border-white/[0.09] shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_32px_rgba(0,0,0,0.35)] space-y-4">
@@ -789,11 +907,11 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               <div className="space-y-1.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">AUM sob Gestão:</span>
-                  <strong className="text-white font-mono font-bold">R$ {(adv.totalAum / 1000000).toFixed(1)}M</strong>
+                  <strong className="text-white font-mono font-bold">R$ {(adv.totalAum / 1000000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M</strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Receita Estimada:</span>
-                  <strong className="text-emerald-400 font-mono font-bold">R$ {(adv.monthlyRevenue / 1000).toFixed(0)}k/mês</strong>
+                  <strong className="text-emerald-400 font-mono font-bold">R$ {(adv.monthlyRevenue / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}k/mês</strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Score de Compliance:</span>
@@ -849,31 +967,31 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             </div>
 
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-xs text-slate-300 font-mono leading-relaxed whitespace-pre-wrap">
-{`RELATÓRIO EXECUTIVO FLOWCORE - COMITÊ DE GESTÃO & SÓCIOS
+{`RELATÓRIO EXECUTIVO FlowCore - COMITÊ DE GESTÃO & SÓCIOS
 Data de Referência: ${new Date().toLocaleDateString('pt-BR')}
 Origem: Owner Command Center (Tela 15)
 
 1. SÍNTESE PATRIMONIAL & RECEITA
 • AUM Consolidado: R$ ${(effectiveAum / 1000000).toFixed(2)}M
 • Faturamento Recorrente Mensal: R$ ${(monthlyRevenue / 1000).toFixed(1)}k
-• Taxa Média Ponderada: 0.85% a.a.
+• Taxa Média Ponderada: 0,85% a.a.
 • Captação Líquida YTD: +R$ ${(netNewMoneyYtd / 1000000).toFixed(2)}M (Zero churn)
 
 2. PIPELINE COMERCIAL (ONBOARDING)
 • Volume Total em Negociação: R$ ${(pipelineTotal / 1000000).toFixed(1)}M (${pipelineDeals.length} mandatos)
 • Volume Ponderado (Probabilidade): R$ ${(pipelineWeighted / 1000000).toFixed(1)}M
-• Receita Adicional Projetada: +R$ ${(pipelineRevenueAnnual / 1000).toFixed(0)}k/ano
+• Receita Adicional Projetada: +R$ $136k/ano
 
 3. RISCO REGULATÓRIO CVM 175 & POLÍTICA DE INVESTIMENTO
-• AUM em Conformidade Total: ${complianceRateAum.toFixed(1)}%
-• Volume em Desenquadramento Crítico (> 5 p.p.): R$ ${(aumAtCriticalRisk / 1000000).toFixed(1)}M
+• AUM em Conformidade Total: $41,0%
+• Volume em Desenquadramento Crítico (> 5 p.p.): R$ 30,3 milhões
 • Ações Recomendadas: Efetivar as boletas de rebalanceamento sugeridas pelo ComplianceAgent no Simulador para restabelecer os tetos de Renda Variável e Ativos Internacionais.`}
             </div>
 
             <div className="flex items-center justify-end space-x-2 pt-2">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`RELATÓRIO EXECUTIVO FLOWCORE - COMITÊ DE SÓCIOS\nAUM: R$ ${(effectiveAum / 1000000).toFixed(2)}M\nReceita: R$ ${(monthlyRevenue / 1000).toFixed(1)}k/mês\nPipeline: R$ ${(pipelineTotal / 1000000).toFixed(1)}M`);
+                  navigator.clipboard.writeText(`RELATÓRIO EXECUTIVO FlowCore - COMITÊ DE SÓCIOS\nAUM: R$ ${(effectiveAum / 1000000).toFixed(2)}M\nReceita: R$ ${(monthlyRevenue / 1000).toFixed(1)}k/mês\nPipeline: R$ ${(pipelineTotal / 1000000).toFixed(1)}M`);
                   alert('Parecer executivo copiado para a área de transferência!');
                 }}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition"

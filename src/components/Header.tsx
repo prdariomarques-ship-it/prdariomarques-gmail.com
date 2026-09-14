@@ -12,6 +12,8 @@ import {
   Eye,
   Activity,
   Cpu,
+  Key,
+  Lock,
 } from 'lucide-react';
 import { DataMode, ComplianceNotification, NotificationChannelSettings } from '../types';
 import { NotificationCenterDropdown } from './NotificationCenterDropdown';
@@ -50,6 +52,9 @@ interface HeaderProps {
   isScanning: boolean;
   channelSettings?: NotificationChannelSettings;
   onOpenNotificationSettings: () => void;
+  // Segurança da API (Bearer Token)
+  onOpenApiSecurity?: () => void;
+  hasAuthError?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -76,6 +81,8 @@ export const Header: React.FC<HeaderProps> = ({
   isScanning,
   channelSettings,
   onOpenNotificationSettings,
+  onOpenApiSecurity,
+  hasAuthError = false,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white shadow-md">
@@ -90,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-xl tracking-tight text-white">FlowCore</span>
                 <span className="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Compliance v1.2
+                  Conformidade v1.2
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
@@ -104,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-white/[0.08] shadow-inner text-xs">
               <button
                 onClick={() => setDataMode('LIVE')}
-                title="Dados em tempo real da base de custódia e B3"
+                title="Conexão direta"
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition ${
                   dataMode === 'LIVE'
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
@@ -112,9 +119,8 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full ${dataMode === 'LIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-                <span className="hidden md:inline font-semibold">LIVE</span> DATA
+                <span className="font-semibold">LIVE DATA</span>
               </button>
-
               <button
                 onClick={() => setDataMode('SIMULATION')}
                 title="Modo Sandbox: ordens de teste sem efeito regulatório/mercado externo"
@@ -127,7 +133,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className={`w-2 h-2 rounded-full ${dataMode === 'SIMULATION' ? 'bg-amber-400' : 'bg-slate-600'}`} />
                 <span className="hidden md:inline font-semibold">SIMULATION</span>
               </button>
-
               <button
                 onClick={() => setDataMode('PROJECTION')}
                 title="Projeção estatística e modelos de expansão comercial"
@@ -158,6 +163,31 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action Buttons & Notification Bell */}
           <div className="flex items-center space-x-2">
+            {/* Botão de Autenticação / Segurança da API */}
+            <button
+              id="header-api-security-btn"
+              onClick={onOpenApiSecurity}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition cursor-pointer ${
+                hasAuthError
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+              }`}
+              title={
+                hasAuthError
+                  ? 'Erro 401: Token de API inválido. Clique para configurar.'
+                  : 'Gerenciador de Token Bearer de API (Segurança CVM 175)'
+              }
+            >
+              {hasAuthError ? (
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+              ) : (
+                <Key className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              <span className="hidden sm:inline">
+                {hasAuthError ? 'Token Inválido (401)' : 'Segurança API'}
+              </span>
+            </button>
+
             {/* Notification Center Bell & Dropdown */}
             <NotificationCenterDropdown
               notifications={notifications}
@@ -212,7 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Award className="w-4 h-4 mr-2 text-amber-400" />
-            Owner Command (Tela 15)
+            Comando do Proprietário (Tela 15)
           </button>
 
           <button
@@ -255,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Sliders className="w-4 h-4 mr-2" />
-            Simulador de Rebalanceamento
+            Simulador de Reequilíbrio
           </button>
 
           <button

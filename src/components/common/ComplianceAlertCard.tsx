@@ -460,7 +460,7 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
           }
           title={`Parecer Fiduciário de IA • ${alert.assetClass}`}
           category="COMPLIANCE"
-          severity={alert.severity}
+          severity={alert.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING'}
           ruleSource={effectiveRuleSource}
           rule_source={effectiveRuleSource}
           policyId={effectivePolicyId}

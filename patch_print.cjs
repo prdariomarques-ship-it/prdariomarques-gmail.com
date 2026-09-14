@@ -1,0 +1,67 @@
+const fs = require('fs');
+const file = 'src/index.css';
+let content = fs.readFileSync(file, 'utf8');
+
+const target = `@import "tailwindcss";`;
+
+const replacement = `@import "tailwindcss";
+
+@layer utilities {
+  @media print {
+    body {
+      background-color: white !important;
+      color: black !important;
+    }
+    
+    /* Esconder navegação, botões e elementos interativos na impressão */
+    nav, header, button, .print-hidden, 
+    [role="button"], [role="dialog"], #open-channel-settings-bar-btn {
+      display: none !important;
+    }
+
+    /* Formatar áreas principais para página */
+    main {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Garantir que textos e cards fiquem visíveis no papel branco */
+    .bg-slate-950, .bg-slate-900, .bg-slate-800, .bg-slate-900\\/50 {
+      background-color: transparent !important;
+      border: 1px solid #e2e8f0 !important;
+    }
+    
+    .text-white, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500 {
+      color: #0f172a !important;
+    }
+
+    /* Cores de severidade ajustadas para papel (menos vibrantes, mais legíveis no branco) */
+    .text-rose-400, .text-rose-500 { color: #dc2626 !important; }
+    .bg-rose-500\\/20 { background-color: #fef2f2 !important; border: 1px solid #fecaca !important; }
+    
+    .text-amber-400, .text-amber-500 { color: #d97706 !important; }
+    .bg-amber-500\\/20 { background-color: #fffbeb !important; border: 1px solid #fde68a !important; }
+    
+    .text-emerald-400, .text-emerald-500 { color: #059669 !important; }
+    .bg-emerald-500\\/20 { background-color: #ecfdf5 !important; border: 1px solid #a7f3d0 !important; }
+
+    /* Evitar que os alertas quebrem entre páginas */
+    .break-inside-avoid, .print-avoid-break {
+      break-inside: avoid;
+    }
+    
+    /* Remover bordas arredondadas e sombras para impressão mais limpa */
+    * {
+      box-shadow: none !important;
+    }
+  }
+}
+`;
+
+if (content.includes(target)) {
+  content = content.replace(target, replacement);
+  fs.writeFileSync(file, content);
+  console.log("Success");
+} else {
+  console.log("Target not found.");
+}
