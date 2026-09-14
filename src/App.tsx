@@ -25,6 +25,7 @@ import { NotificationToastContainer } from './components/NotificationToast';
 import { NotificationSettingsModal } from './components/NotificationSettingsModal';
 import { ApiSecurityModal } from './components/common/ApiSecurityModal';
 import { DataModeControlBanner } from './components/common/DataModeControlBanner';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import {
   resolvePortfoliosAndAlertsForMode,
   SimulationScenario,
@@ -728,71 +729,76 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'dashboard' && (
-          <DashboardView
-            portfolios={effectivePortfolios}
-            alerts={effectiveAlerts}
-            onSelectPortfolio={handleSelectPortfolio}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-            onStartRebalance={handleStartRebalance}
-            dataMode={dataMode}
-          />
-        )}
+        <ErrorBoundary
+          fallbackTitle="Falha na Renderização do Modo Selecionado"
+          onReset={() => handleSetDataMode('LIVE')}
+        >
+          {activeTab === 'dashboard' && (
+            <DashboardView
+              portfolios={effectivePortfolios}
+              alerts={effectiveAlerts}
+              onSelectPortfolio={handleSelectPortfolio}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onStartRebalance={handleStartRebalance}
+              dataMode={dataMode}
+            />
+          )}
 
-        {activeTab === 'owner' && (
-          <OwnerCommandCenterView
-            portfolios={effectivePortfolios}
-            alerts={effectiveAlerts}
-            onSelectPortfolio={handleSelectPortfolio}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-            onStartRebalance={handleStartRebalance}
-            dataMode={dataMode}
-          />
-        )}
+          {activeTab === 'owner' && (
+            <OwnerCommandCenterView
+              portfolios={effectivePortfolios}
+              alerts={effectiveAlerts}
+              onSelectPortfolio={handleSelectPortfolio}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onStartRebalance={handleStartRebalance}
+              dataMode={dataMode}
+            />
+          )}
 
-        {activeTab === 'alerts' && (
-          <AlertsView
-            alerts={effectiveAlerts}
-            onStartRebalance={handleStartRebalance}
-            onSelectPortfolio={handleSelectPortfolio}
-          />
-        )}
+          {activeTab === 'alerts' && (
+            <AlertsView
+              alerts={effectiveAlerts}
+              onStartRebalance={handleStartRebalance}
+              onSelectPortfolio={handleSelectPortfolio}
+            />
+          )}
 
-        {activeTab === 'portfolios' && (
-          <PortfoliosView
-            portfolios={effectivePortfolios}
-            selectedPortfolioId={selectedPortfolioId}
-            onSelectPortfolio={setSelectedPortfolioId}
-            onStartRebalance={handleStartRebalance}
-            onOpenAgentWithPortfolio={handleOpenAgentWithPortfolio}
-          />
-        )}
+          {activeTab === 'portfolios' && (
+            <PortfoliosView
+              portfolios={effectivePortfolios}
+              selectedPortfolioId={selectedPortfolioId}
+              onSelectPortfolio={setSelectedPortfolioId}
+              onStartRebalance={handleStartRebalance}
+              onOpenAgentWithPortfolio={handleOpenAgentWithPortfolio}
+            />
+          )}
 
-        {activeTab === 'simulator' && (
-          <RebalanceSimulatorView
-            portfolios={effectivePortfolios}
-            selectedPortfolioId={selectedPortfolioId}
-            onSelectPortfolio={setSelectedPortfolioId}
-            onRebalanceExecuted={handleRebalanceExecuted}
-          />
-        )}
+          {activeTab === 'simulator' && (
+            <RebalanceSimulatorView
+              portfolios={effectivePortfolios}
+              selectedPortfolioId={selectedPortfolioId}
+              onSelectPortfolio={setSelectedPortfolioId}
+              onRebalanceExecuted={handleRebalanceExecuted}
+            />
+          )}
 
-        {activeTab === 'agent' && (
-          <AiComplianceChatView
-            portfolios={effectivePortfolios}
-            alerts={effectiveAlerts}
-            initialQuery={agentInitialQuery}
-          />
-        )}
+          {activeTab === 'agent' && (
+            <AiComplianceChatView
+              portfolios={effectivePortfolios}
+              alerts={effectiveAlerts}
+              initialQuery={agentInitialQuery}
+            />
+          )}
 
-        {activeTab === 'limits' && (
-          <LimitsConfigurationView
-            portfolios={effectivePortfolios}
-            onUpdateLimits={handleUpdateLimits}
-            onResetLimits={handleResetLimits}
-            currentAlerts={effectiveAlerts}
-          />
-        )}
+          {activeTab === 'limits' && (
+            <LimitsConfigurationView
+              portfolios={effectivePortfolios}
+              onUpdateLimits={handleUpdateLimits}
+              onResetLimits={handleResetLimits}
+              currentAlerts={effectiveAlerts}
+            />
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* Footer */}

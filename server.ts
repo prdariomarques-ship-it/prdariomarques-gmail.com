@@ -1,7 +1,6 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import {
@@ -36,36 +35,14 @@ const PORT = 3000;
 
 app.use(express.json());
 
+
 // ==========================================
 // CONTROLE DE AUTENTICAÇÃO E SESSÃO OBRIGATÓRIA (/api/*)
-// Bloqueia qualquer requisição sem Bearer token válido ou sessão ativa com HTTP 401
+// Bloqueia qualquer requisição sem Bearer token válido
 // ==========================================
 const VALID_API_TOKENS = new Set<string>();
 if (process.env.API_TOKEN) {
   VALID_API_TOKENS.add(process.env.API_TOKEN.trim());
-}
-
-// Armazenamento em memória de tokens de sessão efêmeros (Zero-Trust)
-const activeSessions = new Set<string>();
-
-function parseCookie(cookieHeader: string | undefined, name: string): string | null {
-  if (!cookieHeader) return null;
-  const match = cookieHeader.match(new RegExp(`(^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-function mintSession(res: express.Response): string {
-  const sessionToken = crypto.randomBytes(24).toString('hex');
-  activeSessions.add(sessionToken);
-  if (activeSessions.size > 1000) {
-    const oldest = activeSessions.values().next().value;
-    if (oldest) activeSessions.delete(oldest);
-  }
-  res.setHeader(
-    'Set-Cookie',
-    `FlowCore_session=${sessionToken}; Path=/; HttpOnly; SameSite=Strict`
-  );
-  return sessionToken;
 }
 
 app.use('/api', (req, res, next) => {
@@ -85,24 +62,18 @@ app.use('/api', (req, res, next) => {
     const parts = authHeader.trim().split(' ');
     if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
       const token = parts[1].trim();
-      if (VALID_API_TOKENS.has(token) || activeSessions.has(token)) {
+      if (VALID_API_TOKENS.has(token)) {
         return next();
       }
       return res.status(401).json({
         success: false,
-        error: 'Acesso não autorizado: Token de API incorreto ou revogado.',
+        error: 'Acesso não autorizado: Token de API incorreto.',
         code: 'INVALID_TOKEN',
       });
     }
   }
 
-  // 2. Tenta validar via Cookie de Sessão Protegido FlowCore_session
-  const sessionCookie = parseCookie(req.headers.cookie, 'FlowCore_session');
-  if (sessionCookie && activeSessions.has(sessionCookie)) {
-    return next();
-  }
-
-  // 3. Tenta validar via Header X-API-Key
+  // 2. Tenta validar via Header X-API-Key
   const apiKeyHeader = req.headers['x-api-key'];
   if (typeof apiKeyHeader === 'string' && VALID_API_TOKENS.has(apiKeyHeader.trim())) {
     return next();
@@ -111,10 +82,11 @@ app.use('/api', (req, res, next) => {
   // Nenhuma credencial válida fornecida -> 401 Unauthorized
   return res.status(401).json({
     success: false,
-    error: 'Acesso não autorizado: Autenticação obrigatória (Bearer token ou sessão ativa).',
+    error: 'Acesso não autorizado: Autenticação Bearer obrigatória.',
     code: 'AUTH_REQUIRED',
   });
 });
+
 
 // ==========================================
 // API ROUTES
@@ -591,12 +563,9 @@ async function startServer() {
       const url = req.originalUrl;
       if (req.method === 'GET' && !url.startsWith('/api') && req.headers.accept?.includes('text/html')) {
         try {
-          const sessionToken = mintSession(res);
           const indexPath = path.join(process.cwd(), 'index.html');
           let template = fs.readFileSync(indexPath, 'utf-8');
           template = await vite.transformIndexHtml(url, template);
-          const tokenScript = `<script>window.__FLOWCORE_INITIAL_TOKEN__ = ${JSON.stringify(sessionToken)};</script>`;
-          template = template.replace('</head>', `${tokenScript}</head>`);
           return res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
         } catch (e) {
           return next(e);
@@ -610,11 +579,8 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      const sessionToken = mintSession(res);
       const indexPath = path.join(distPath, 'index.html');
       let html = fs.readFileSync(indexPath, 'utf-8');
-      const tokenScript = `<script>window.__FLOWCORE_INITIAL_TOKEN__ = ${JSON.stringify(sessionToken)};</script>`;
-      html = html.replace('</head>', `${tokenScript}</head>`);
       res.send(html);
     });
   }

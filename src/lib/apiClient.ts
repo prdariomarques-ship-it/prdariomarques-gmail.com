@@ -146,7 +146,7 @@ export async function authenticatedFetch(
 
   const enhancedInit: RequestInit = {
     ...init,
-    credentials: init?.credentials || 'include',
+    credentials: init?.credentials || 'omit',
     headers,
   };
 
