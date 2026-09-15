@@ -135,20 +135,36 @@ export const AiComplianceChatView: React.FC<AiComplianceChatViewProps> = ({
         </div>
 
         {/* Quick Prompts */}
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-            Consultas Sugeridas:
-          </span>
-          {quickPrompts.map((prompt, idx) => (
+        <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              Consultas Sugeridas:
+            </span>
+            {quickPrompts.map((prompt, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendMessage(prompt)}
+                disabled={isLoading}
+                className="text-xs px-3 py-1 bg-slate-950/70 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg transition"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+             <span className="text-[11px] font-semibold text-indigo-500/70 uppercase tracking-wider">
+              Análise Avançada:
+            </span>
             <button
-              key={idx}
-              onClick={() => handleSendMessage(prompt)}
+              onClick={() => handleSendMessage("Analise o comportamento de risco atual das carteiras contra o histórico de enquadramento da instrução CVM 175. Por favor, sugira estratégias e ordens de ajuste proativo antes que os limites de concentração sejam efetivamente rompidos.")}
               disabled={isLoading}
-              className="text-xs px-3 py-1 bg-slate-950/70 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-lg transition"
+              className="text-xs px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-lg transition flex items-center font-medium shadow-sm"
             >
-              {prompt}
+              <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
+              Estratégias Proativas CVM 175
             </button>
-          ))}
+          </div>
         </div>
       </div>
 
