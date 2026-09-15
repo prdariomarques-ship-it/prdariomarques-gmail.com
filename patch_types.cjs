@@ -1,18 +1,8 @@
 const fs = require('fs');
-const file = 'src/types.ts';
-let content = fs.readFileSync(file, 'utf8');
-
-const target = `  scheduledReportTime?: string;
-  scheduledReportCron?: string;`;
-
-const replacement = `  scheduledReportTime?: string;
-  scheduledReportDayOfWeek?: string;
-  scheduledReportCron?: string;`;
-
-if (!content.includes(target)) {
-  console.log("Could not find target block");
-} else {
-  content = content.replace(target, replacement);
-  fs.writeFileSync(file, content);
-  console.log("Success");
-}
+let code = fs.readFileSync('src/types.ts', 'utf-8');
+code = code.replace(
+  "productType?: string;",
+  "productType?: 'tesouraria_banco' | 'corretora' | 'asset_gestora';"
+);
+fs.writeFileSync('src/types.ts', code);
+console.log('patched src/types.ts');

@@ -34,6 +34,12 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+import cors from 'cors';
+app.use(cors({
+  origin: '*', // Permitir de qualquer origem (inclusive app Capacitor localhost)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 
 // ==========================================

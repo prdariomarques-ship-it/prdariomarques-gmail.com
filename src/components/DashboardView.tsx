@@ -31,6 +31,7 @@ import { ImmediateLiquidityIndexCard } from './ImmediateLiquidityIndexCard';
 import { SelectedPortfolioHistoryChart } from './SelectedPortfolioHistoryChart';
 import { AssetClassFilterBar } from './AssetClassFilterBar';
 import { PortfolioSectorRiskHeatmap } from './PortfolioSectorRiskHeatmap';
+import { GlobalAssetDistributionChart } from './GlobalAssetDistributionChart';
 import { downloadPortfolioComplianceReportCSV, downloadThirtyDayComplianceHistoryCSV } from '../utils/csvExport';
 import { downloadPortfolioComplianceReportPDF } from '../utils/pdfExport';
 import { generateThirtyDayComplianceSnapshots } from '../utils/complianceHistory';
@@ -378,12 +379,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* ÍNDICE DE LIQUIDEZ IMEDIATA DO PORTFÓLIO CONSOLIDADO (D+0 VS. D+1 OU SUPERIOR) */}
-      <ImmediateLiquidityIndexCard
-        portfolios={portfolios}
-        onSelectPortfolio={onSelectPortfolio}
-        onStartRebalance={onStartRebalance}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GlobalAssetDistributionChart portfolios={portfolios} alerts={alerts} />
+        <ImmediateLiquidityIndexCard
+          portfolios={portfolios}
+          onSelectPortfolio={onSelectPortfolio}
+          onStartRebalance={onStartRebalance}
+        />
+      </div>
 
       {/* GRÁFICO DE LINHA COM RECHARTS: EVOLUÇÃO HISTÓRICA DO PERCENTUAL DE CONFORMIDADE (ÚLTIMOS 30 DIAS) */}
       <ThirtyDayComplianceHistoryChart

@@ -1,8 +1,18 @@
 const fs = require('fs');
-const file = 'vite.config.ts';
-let content = fs.readFileSync(file, 'utf8');
+let code = fs.readFileSync('vite.config.ts', 'utf-8');
 
-content = content.replace(/\\s*define:\\s*\\{\\s*'__FLOWCORE_RUNTIME_TOKEN__':[^}]+\\},/g, '');
+code = code.replace(
+  "globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],",
+  "globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],\n        maximumFileSizeToCacheInBytes: 5000000," // 5MB
+);
 
-fs.writeFileSync(file, content);
-console.log("Success vite patch");
+// wait, I didn't actually add the workbox config when replacing the vite config initially! 
+// Let's check my vite.config.ts replacement from before. I left out workbox.
+// Let's just insert the workbox config explicitly into VitePWA.
+code = code.replace(
+  "devOptions:",
+  "workbox: {\n          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],\n          maximumFileSizeToCacheInBytes: 5000000,\n        },\n        devOptions:"
+);
+
+fs.writeFileSync('vite.config.ts', code);
+console.log('patched vite config');

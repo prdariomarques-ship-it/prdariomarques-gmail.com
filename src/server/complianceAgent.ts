@@ -180,10 +180,66 @@ export class ComplianceAgent {
         }
       }
 
+      // Identificar ativos da classe que podem explicar o desvio
+      const classAssets = portfolio.assets.filter(a => a.assetClass === alloc.assetClass);
+      let marketContextExplanation = '';
+      let bestPerformingAsset = null;
+      let worstPerformingAsset = null;
+      
+      for (const asset of classAssets) {
+        if (asset.historicalPerformance) {
+          if (!bestPerformingAsset || (asset.historicalPerformance.twelveMonths || 0) > (bestPerformingAsset.historicalPerformance?.twelveMonths || 0)) {
+            bestPerformingAsset = asset;
+          }
+          if (!worstPerformingAsset || (asset.historicalPerformance.twelveMonths || 0) < (worstPerformingAsset.historicalPerformance?.twelveMonths || 0)) {
+            worstPerformingAsset = asset;
+          }
+        }
+      }
+
+      let whyExplanation = 'Variação de mercado e rendimento acumulado dos ativos componentes aumentaram a participação relativa da classe de forma desproporcional sem intervenção recente de caixa.';
+      
+
+      // Mock benchmark return for comparison
+      const benchmarkReturns: Record<string, number> = {
+        'CDI': 10.5,
+        'IBOVESPA': 15.2,
+        'S&P 500': 22.4,
+        'IMA-B': 8.7,
+        'IPCA+': 6.5,
+      };
+      const bmkReturn = benchmarkReturns[portfolio.benchmark] || 10.0;
+
+      if (isOver && bestPerformingAsset && bestPerformingAsset.historicalPerformance?.twelveMonths) {
+        const perf = bestPerformingAsset.historicalPerformance.twelveMonths;
+        if (perf > 5) {
+          const outperformance = perf - bmkReturn;
+          let extraContext = '';
+          if (outperformance > 0) {
+            extraContext = ` The asset outperformed the portfolio benchmark (${portfolio.benchmark} at ${bmkReturn.toFixed(1)}%) by ${outperformance.toFixed(1)} p.p.`;
+            mandateVsInternalExplanation += `\n\n[Análise de Mercado]: O desenquadramento foi impulsionado majoritariamente por ganhos de capital (valorização passiva de ativos) superando o benchmark, e não por falha de governança em novos aportes.`;
+          }
+          marketContextExplanation = `Breach triggered by passive market movement rather than manual trading. ${bestPerformingAsset.ticker} experienced a ${perf.toFixed(1)}% price increase over the period, artificially inflating the allocation by ${absDeviation.toFixed(1)} p.p. above the mandate.${extraContext}`;
+          whyExplanation = `A valorização expressiva de ativos da carteira (ex: ${bestPerformingAsset.ticker} subiu ${perf.toFixed(1)}% em 12 meses) distorceu a alocação relativa para além do limite permitido.`;
+        }
+      } else if (!isOver && worstPerformingAsset && worstPerformingAsset.historicalPerformance?.twelveMonths !== undefined) {
+        const perf = worstPerformingAsset.historicalPerformance.twelveMonths;
+        if (perf < -5) {
+          const underperformance = bmkReturn - perf;
+          let extraContext = '';
+          if (underperformance > 0) {
+            extraContext = ` The asset underperformed the portfolio benchmark (${portfolio.benchmark} at ${bmkReturn.toFixed(1)}%) by ${underperformance.toFixed(1)} p.p.`;
+            mandateVsInternalExplanation += `\n\n[Análise de Mercado]: O desenquadramento (abaixo do piso) foi causado majoritariamente pela forte desvalorização do ativo contra o benchmark (perda de capital), não caracterizando resgate manual indevido.`;
+          }
+          marketContextExplanation = `Breach triggered by passive market contraction rather than manual trading. ${worstPerformingAsset.ticker} experienced a ${Math.abs(perf).toFixed(1)}% price drop, suppressing the allocation ${absDeviation.toFixed(1)} p.p. below the required mandate minimum.${extraContext}`;
+          whyExplanation = `A desvalorização de ativos da classe (ex: ${worstPerformingAsset.ticker} caiu ${Math.abs(perf).toFixed(1)}% em 12 meses) reduziu a participação relativa para abaixo do piso obrigatório.`;
+        }
+      }
+      
       // Explicação estruturada de IA padronizada
       const aiExplanation = {
         what: `A exposição em ${alloc.assetClass} atingiu ${alloc.currentPercent.toFixed(1)}% do patrimônio líquido, ultrapassando a marca estipulada de ${isOver ? alloc.maxPercent.toFixed(1) : alloc.minPercent.toFixed(1)}% em ${absDeviation.toFixed(1)} p.p.`,
-        why: `Variação de mercado e rendimento acumulado dos ativos componentes aumentaram a participação relativa da classe de forma desproporcional sem intervenção recente de caixa.`,
+        why: whyExplanation,
         impact: `${governanceNote} Risco estimado de volatilidade adicional e impacto no tracking error em relação ao benchmark ${portfolio.benchmark}.`,
         action: suggestedAction,
         confidence: alloc.severity === 'CRITICAL' ? 97 : 91,
@@ -218,8 +274,67 @@ export class ComplianceAgent {
         effectiveDate: '01/01/2026',
         tolerancePP: tolerance,
         mandateVsInternalExplanation,
+        marketContextExplanation,
         aiExplanation,
       });
+    }
+
+
+    // Check concentration by Issuer (CNPJ)
+    const issuerTotals: Record<string, number> = {};
+    const issuerNames: Record<string, string> = {};
+    for (const asset of portfolio.assets) {
+      if (asset.cnpj || asset.name) {
+        const key = asset.cnpj || asset.name;
+        issuerTotals[key] = (issuerTotals[key] || 0) + asset.totalValue;
+        issuerNames[key] = asset.name;
+      }
+    }
+
+    const CONCENTRATION_LIMIT = 20.0; // 20% max per issuer
+    for (const [key, value] of Object.entries(issuerTotals)) {
+      const currentPercent = (value / totalVal) * 100;
+      if (currentPercent > CONCENTRATION_LIMIT) {
+        const absDeviation = currentPercent - CONCENTRATION_LIMIT;
+        alerts.push({
+          id: `alt-${portfolio.id}-conc-${key.replace(/\W/g, '')}`,
+          portfolioId: portfolio.id,
+          portfolioName: portfolio.name,
+          clientName: portfolio.clientName,
+          assetClass: 'Geral',
+          currentPercent,
+          targetPercent: CONCENTRATION_LIMIT,
+          maxPercent: CONCENTRATION_LIMIT,
+          minPercent: 0,
+          deviationPP: absDeviation,
+          severity: 'CRITICAL',
+          message: `[CRITICAL] Risco de Concentração de Crédito: emissor ${issuerNames[key]} atinge ${currentPercent.toFixed(1)}% do AUM, violando teto de 20%.`,
+          suggestedAction: `Pulverizar posições no emissor ${issuerNames[key]} (venda sugerida de R$ ${((absDeviation/100)*totalVal).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}) para reenquadramento.`,
+          excessValueBRL: Math.round((absDeviation / 100) * totalVal),
+          recommendedTradeValue: Math.round((absDeviation / 100) * totalVal),
+          timestamp: new Date().toLocaleDateString('pt-BR'),
+          ruleSource: 'POLITICA_INTERNA',
+          policyId: 'CREDIT-CONC-01',
+          limit: CONCENTRATION_LIMIT,
+          currentValue: currentPercent,
+          rule_source: 'POLITICA_INTERNA',
+          policy_id: 'CREDIT-CONC-01',
+          current_value: currentPercent,
+          difference: absDeviation,
+          effectiveDate: '01/01/2026',
+          tolerancePP: 0,
+          mandateVsInternalExplanation: 'Risco sistêmico e de contraparte monitorado por comitê de crédito interno.',
+          marketContextExplanation: 'Concentração passiva por valorização ou aportes não diversificados.',
+          aiExplanation: {
+            what: `A exposição de crédito em ${issuerNames[key]} chegou a ${currentPercent.toFixed(1)}%.`,
+            why: 'Falta de pulverização ou forte rali dos ativos deste emissor.',
+            impact: 'Elevação do risco de crédito (default) sistêmico da carteira.',
+            action: `Vender ${absDeviation.toFixed(1)}% para pulverização.`,
+            confidence: 95,
+            source: 'Comitê de Risco / CVM 175',
+          }
+        });
+      }
     }
 
     return alerts;

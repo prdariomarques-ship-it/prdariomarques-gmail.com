@@ -197,7 +197,12 @@ export async function authenticatedFetch(
     headers,
   };
 
-  const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  const baseUrl = import.meta.env.VITE_API_URL || '';
+  let urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  if (urlStr.startsWith('/api') && baseUrl) {
+    urlStr = `${baseUrl}${urlStr}`;
+  }
+
   const method = init?.method || 'GET';
   const start = performance.now();
   
@@ -216,7 +221,7 @@ export async function authenticatedFetch(
   }
 
   try {
-    const res = await fetch(input, enhancedInit);
+    const res = await fetch(urlStr, enhancedInit);
     const duration = Math.round(performance.now() - start);
 
     let resBodyStr = undefined;

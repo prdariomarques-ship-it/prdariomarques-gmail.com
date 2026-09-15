@@ -440,6 +440,23 @@ export const ComplianceAlertCard: React.FC<ComplianceAlertCardProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
+      {/* MARKET CONTEXT BLOCK (Se houver contexto de rendimento)        */}
+      {/* ------------------------------------------------------------- */}
+      {alert.marketContextExplanation && (
+        <div className="bg-emerald-950/30 border border-emerald-500/20 p-4 rounded-xl mt-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+              Explanation (Market Movement)
+            </h4>
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            {alert.marketContextExplanation}
+          </p>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
       {/* AI Structured Insight Card (WHAT, WHY, IMPACT, ACTION...)      */}
       {/* ------------------------------------------------------------- */}
       <div className="pt-1">

@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user in the system",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "manager", "client"]
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": ["email", "role"]
+    },
+    "Portfolio": {
+      "title": "Portfolio",
+      "description": "A user portfolio",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string"
+        }
+      },
+      "required": ["ownerId", "name"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "portfolios/{portfolioId}": {
+      "schema": "Portfolio",
+      "description": "User portfolios"
+    }
+  }
+}

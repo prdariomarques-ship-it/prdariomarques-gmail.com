@@ -17,6 +17,17 @@ export type RuleSource =
 
 export type StrictnessLevel = 'HARD_STOP' | 'WARNING_TOLERANCE' | 'INFORMATIONAL';
 
+export interface HistoricalPerformance {
+  daily?: number;
+  monthly?: number;
+  sixMonths?: number;
+  ytd?: number;
+  twelveMonths?: number;
+  twentyFourMonths?: number;
+  thirtySixMonths?: number;
+  inception?: number;
+}
+
 export interface Asset {
   id: string;
   ticker: string;
@@ -31,10 +42,13 @@ export interface Asset {
   unrealizedGainPercent?: number;
   holdingPeriodDays?: number;
   taxRatePercent?: number;
-  isTaxExempt?: boolean;
+  isTaxExempt?: boolean | null;
   taxExemptionReason?: string;
   sector?: string;
   regulatoryLimitPercent?: number;
+  cnpj?: string;
+  productType?: 'tesouraria_banco' | 'corretora' | 'asset_gestora';
+  historicalPerformance?: HistoricalPerformance;
 }
 
 export type TaxStrategy =
@@ -193,6 +207,7 @@ export interface ComplianceAlert {
   effectiveDate: string;
   tolerancePP: number;
   mandateVsInternalExplanation?: string;
+  marketContextExplanation?: string;
   aiExplanation?: AiExplanation;
 }
 

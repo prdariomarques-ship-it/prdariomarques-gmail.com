@@ -36,6 +36,7 @@ import { authenticatedFetch, subscribeAuthStatusChange, getAuthErrorState } from
 import { playCriticalAlertSound, isSoundEnabled, setSoundEnabled } from './utils/audioNotification';
 
 import { MarketTicker } from './components/common/MarketTicker';
+import { PWAInstallButton } from './components/PWAInstallButton';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
@@ -644,9 +645,10 @@ export default function App() {
               FlowCore ACTIVE
             </span>
             <ConnectivityLatencyBadge />
+            <span className="hidden sm:inline-block"><PWAInstallButton /></span>
             <span className="text-slate-600">|</span>
             <span className="text-slate-300 text-[11px] hidden sm:inline">
-              Sentinel v2.4 monitorando 6 carteiras, mandatos CVM 175 e IPS com alerta imediato ativo.
+              Sentinel v2.4 monitorando {portfolios.length} carteiras, mandatos CVM 175 e IPS com alerta imediato ativo.
             </span>
           </div>
 

@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import {
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+
   FolderOpen,
   User,
   Sliders,
@@ -12,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Portfolio, AssetClass } from '../types';
+import { AssetPerformancePanel } from './common/AssetPerformancePanel';
 
 interface PortfoliosViewProps {
   portfolios: Portfolio[];
@@ -309,7 +314,11 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                 <tbody className="divide-y divide-slate-800/60">
                   {currentPortfolio.assets.map((asset) => {
                     return (
-                      <tr key={asset.id} className="hover:bg-slate-800/40 transition">
+                      <React.Fragment key={asset.id}>
+                      <tr 
+                        className="hover:bg-slate-800/40 transition cursor-pointer"
+                        onClick={() => setExpandedAssetId(expandedAssetId === asset.id ? null : asset.id)}
+                      >
                         <td className="py-2.5 px-3 font-bold text-white">
                           <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-emerald-400 font-mono">
                             {asset.ticker}
@@ -334,6 +343,14 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                           {asset.allocationPercent.toFixed(2)}%
                         </td>
                       </tr>
+                      {expandedAssetId === asset.id && (
+                        <tr className="bg-slate-900/50">
+                          <td colSpan={7} className="p-0 border-b border-white/[0.05]">
+                            <AssetPerformancePanel asset={asset} />
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

@@ -40,7 +40,7 @@ export const AiComplianceChatView: React.FC<AiComplianceChatViewProps> = ({
 
   const quickPrompts = [
     'Quais carteiras estão em desenquadramento crítico hoje e por quê?',
-    'Gerar parecer formal de justificativa da Carteira Alpha Wealth para o comitê',
+    'Gerar parecer formal de justificativa da Carteira Miguel para o comitê',
     'Como rebalancear a carteira Solaris Tech sem gerar fricção fiscal excessiva?',
     'Explique os critérios das severidades NORMAL, ATENÇÃO e CRÍTICA no FlowCore',
   ];

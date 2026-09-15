@@ -23,6 +23,7 @@ import {
 import { Portfolio, ComplianceAlert, PipelineDeal, AdvisorPerformance, DataMode } from '../types';
 import { ClientsAtRisk } from './ClientsAtRisk';
 import { MiniSparkline } from './MiniSparkline';
+import { exportElementToPDF } from '../utils/pdfExport';
 import { AIInsightCard } from './AIInsightCard';
 
 interface OwnerCommandCenterViewProps {
@@ -285,7 +286,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
   ];
 
   return (
-    <div className="space-y-6">
+    <div id="owner-dashboard-content" className="space-y-6">
       {/* Top Header / Executive Title Bar */}
       <div className="relative rounded-2xl p-6 backdrop-blur-xl bg-gradient-to-b from-slate-800/70 via-slate-900/80 to-slate-950/90 border border-white/[0.09] shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_32px_rgba(0,0,0,0.35)] before:absolute before:inset-x-0 before:top-0 before:h-[1.5px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -312,6 +313,14 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
 
           {/* Period Selector & Controls */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            <button
+              onClick={() => exportElementToPDF('owner-dashboard-content', 'Executive-Report', 'Relatório Executivo')}
+              className="px-3 py-1.5 flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition border border-indigo-500/50 shadow-sm mr-2"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Exportar PDF</span>
+            </button>
+
             <div className="flex items-center space-x-1 bg-slate-950/80 p-1 rounded-xl border border-white/[0.08]">
               <button
                 onClick={() => setSelectedPeriod('MÊS_ATUAL')}
