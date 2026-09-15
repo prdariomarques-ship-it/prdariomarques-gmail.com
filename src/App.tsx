@@ -7,6 +7,7 @@ import { PortfoliosView } from './components/PortfoliosView';
 import { RebalanceSimulatorView } from './components/RebalanceSimulatorView';
 import { AiComplianceChatView } from './components/AiComplianceChatView';
 import { LimitsConfigurationView } from './components/LimitsConfigurationView';
+import { ApiDiagnosticsView } from './components/ApiDiagnosticsView';
 import { ConnectivityLatencyBadge } from './components/common/ConnectivityLatencyBadge';
 import {
   Portfolio,
@@ -33,6 +34,8 @@ import {
 } from './utils/simulationEngine';
 import { authenticatedFetch, subscribeAuthStatusChange, getAuthErrorState } from './lib/apiClient';
 import { playCriticalAlertSound, isSoundEnabled, setSoundEnabled } from './utils/audioNotification';
+
+import { MarketTicker } from './components/common/MarketTicker';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
@@ -575,6 +578,9 @@ export default function App() {
         onToggleSound={handleToggleSound}
       />
 
+      {/* Global Market Overview Ticker */}
+      <MarketTicker />
+
       {/* Top Application Header com Sino e Central de Notificações */}
       <Header
         activeTab={activeTab}
@@ -797,6 +803,10 @@ export default function App() {
               onResetLimits={handleResetLimits}
               currentAlerts={effectiveAlerts}
             />
+          )}
+
+          {activeTab === 'api-diagnostics' && (
+            <ApiDiagnosticsView />
           )}
         </ErrorBoundary>
       </main>

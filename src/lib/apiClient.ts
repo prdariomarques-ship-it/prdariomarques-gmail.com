@@ -18,6 +18,53 @@ const authStatusListeners: Set<AuthStatusListener> = new Set();
 let lastAuthErrorState: boolean = false;
 let lastAuthErrorMessage: string = '';
 
+export interface ApiRequestLog {
+  id: string;
+  timestamp: string;
+  url: string;
+  method: string;
+  status: number | null;
+  duration: number;
+  error?: string;
+  reqHeaders?: Record<string, string>;
+  reqBody?: string;
+  resBody?: string;
+}
+
+const apiRequestHistory: ApiRequestLog[] = [];
+const apiRequestListeners: Set<(logs: ApiRequestLog[]) => void> = new Set();
+
+export function getApiRequestHistory(): ApiRequestLog[] {
+  return [...apiRequestHistory];
+}
+
+export function subscribeApiHistoryChange(listener: (logs: ApiRequestLog[]) => void): () => void {
+  apiRequestListeners.add(listener);
+  listener([...apiRequestHistory]);
+  return () => {
+    apiRequestListeners.delete(listener);
+  };
+}
+
+function addApiLog(log: Omit<ApiRequestLog, 'id' | 'timestamp'>) {
+  const newLog: ApiRequestLog = {
+    ...log,
+    id: Math.random().toString(36).substring(2, 9),
+    timestamp: new Date().toISOString(),
+  };
+  apiRequestHistory.unshift(newLog);
+  if (apiRequestHistory.length > 20) {
+    apiRequestHistory.pop();
+  }
+  apiRequestListeners.forEach((fn) => {
+    try {
+      fn([...apiRequestHistory]);
+    } catch {
+      // Ignora erro
+    }
+  });
+}
+
 // Verifica se há token fornecido na URL (ex: ?token=meu-token-secreto)
 function detectTokenFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
@@ -150,16 +197,57 @@ export async function authenticatedFetch(
     headers,
   };
 
+  const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  const method = init?.method || 'GET';
+  const start = performance.now();
+  
+  const reqHeadersObj: Record<string, string> = {};
+  headers.forEach((val, key) => {
+    reqHeadersObj[key] = key.toLowerCase() === 'authorization' ? val.substring(0, 15) + '...[REDACTED]' : val;
+  });
+  
+  let reqBodyStr = undefined;
+  if (init?.body && typeof init.body === 'string') {
+    try {
+      reqBodyStr = JSON.stringify(JSON.parse(init.body), null, 2);
+    } catch {
+      reqBodyStr = init.body;
+    }
+  }
+
   try {
     const res = await fetch(input, enhancedInit);
+    const duration = Math.round(performance.now() - start);
+
+    let resBodyStr = undefined;
+    try {
+      const clonedRes = res.clone();
+      const text = await clonedRes.text();
+      try {
+        resBodyStr = JSON.stringify(JSON.parse(text), null, 2);
+      } catch {
+        resBodyStr = text;
+      }
+    } catch {
+      // Ignora erro ao ler body
+    }
+
+    addApiLog({
+      url: urlStr,
+      method,
+      status: res.status,
+      duration,
+      reqHeaders: reqHeadersObj,
+      reqBody: reqBodyStr,
+      resBody: resBodyStr,
+    });
 
     if (res.status === 401) {
       let errDetail = 'Não autorizado (401)';
       try {
-        const cloned = res.clone();
-        const json = await cloned.json();
-        if (json?.error) {
-          errDetail = json.error;
+        if (resBodyStr) {
+           const json = JSON.parse(resBodyStr);
+           if (json?.error) errDetail = json.error;
         }
       } catch {
         // Ignora parse error
@@ -171,7 +259,17 @@ export async function authenticatedFetch(
     }
 
     return res;
-  } catch (err) {
+  } catch (err: any) {
+    const duration = Math.round(performance.now() - start);
+    addApiLog({
+      url: urlStr,
+      method,
+      status: null,
+      duration,
+      error: err?.message || 'Falha de rede',
+      reqHeaders: reqHeadersObj,
+      reqBody: reqBodyStr,
+    });
     throw err;
   }
 }

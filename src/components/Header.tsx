@@ -25,7 +25,8 @@ export type TabKey =
   | 'portfolios'
   | 'simulator'
   | 'agent'
-  | 'limits';
+  | 'limits'
+  | 'api-diagnostics';
 
 interface HeaderProps {
   activeTab: TabKey;
@@ -311,6 +312,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <SlidersHorizontal className="w-4 h-4 mr-2 text-emerald-400" />
             Configuração de Limites
+          </button>
+
+          <button
+            onClick={() => setActiveTab('api-diagnostics')}
+            className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition whitespace-nowrap ${
+              activeTab === 'api-diagnostics'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow'
+                : 'text-slate-400 hover:text-indigo-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Activity className="w-4 h-4 mr-2 text-indigo-400" />
+            Saúde da API
           </button>
         </div>
       </div>
