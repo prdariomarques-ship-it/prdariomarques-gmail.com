@@ -1,14 +1,10 @@
-import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useMemo } from 'react';
-import { TrendingUp, AlertCircle } from 'lucide-react';
-import { Asset } from '../../types';
+const fs = require('fs');
+let code = fs.readFileSync('src/components/common/AssetPerformancePanel.tsx', 'utf-8');
 
-interface AssetPerformancePanelProps {
-  asset: Asset;
-}
+const importRecharts = `import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';\nimport { useMemo } from 'react';`;
+code = code.replace("import React from 'react';", "import React from 'react';\n" + importRecharts);
 
-
+const mockService = `
 // Mock History Service
 const useMockHistory = (assetName: string, targetReturn12m?: number) => {
   return useMemo(() => {
@@ -49,9 +45,11 @@ const useMockHistory = (assetName: string, targetReturn12m?: number) => {
     return data;
   }, [assetName, targetReturn12m]);
 };
+`;
 
-export const AssetPerformancePanel: React.FC<AssetPerformancePanelProps> = ({ asset }) => {
-  
+code = code.replace("export const AssetPerformancePanel", mockService + "\nexport const AssetPerformancePanel");
+
+const newContent = `
   const historyData = useMockHistory(asset.name, asset.historicalPerformance?.twelveMonths);
   const isPositive = asset.historicalPerformance?.twelveMonths !== undefined && asset.historicalPerformance.twelveMonths >= 0;
   const strokeColor = isPositive ? '#10b981' : '#f43f5e';
@@ -89,7 +87,7 @@ export const AssetPerformancePanel: React.FC<AssetPerformancePanelProps> = ({ as
               <div key={idx} className="bg-slate-900 border border-white/10 p-2 rounded flex flex-col items-center justify-center">
                 <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 text-center">{window.label}</span>
                 {window.val !== undefined ? (
-                  <span className={`text-xs font-mono font-bold ${window.val >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <span className={\`text-xs font-mono font-bold \${window.val >= 0 ? 'text-emerald-400' : 'text-rose-400'}\`}>
                     {window.val > 0 ? '+' : ''}{window.val.toFixed(2)}%
                   </span>
                 ) : (
@@ -166,5 +164,10 @@ export const AssetPerformancePanel: React.FC<AssetPerformancePanelProps> = ({ as
         {asset.isTaxExempt !== undefined && <span>IR: {asset.isTaxExempt ? 'ISENTO' : 'TRIBUTADO'}</span>}
       </div>
     </div>
-  );
-};
+  );`;
+
+// Replace the return block
+code = code.replace(/return \([\s\S]*\);/, newContent);
+
+fs.writeFileSync('src/components/common/AssetPerformancePanel.tsx', code);
+console.log('patched asset panel');
