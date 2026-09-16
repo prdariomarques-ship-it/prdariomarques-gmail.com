@@ -69,7 +69,7 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+        <div className="flex overflow-x-auto pb-4 pt-1 snap-x snap-mandatory gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible sm:pb-0 sm:pt-0 hide-scrollbar">
           {portfolios.map((p) => {
             const isSelected = p.id === currentPortfolio?.id;
             const isCrit = p.status === 'CRITICAL';
@@ -79,10 +79,10 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
               <button
                 key={p.id}
                 onClick={() => onSelectPortfolio(p.id)}
-                className={`p-3 rounded-xl text-left border transition flex items-center justify-between ${
+                className={`w-[85vw] sm:w-auto shrink-0 snap-center p-3.5 rounded-xl text-left border transition-all flex items-center justify-between ${
                   isSelected
-                    ? 'bg-slate-800 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                    ? 'bg-slate-800 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
                 }`}
               >
                 <div className="min-w-0 pr-2">
