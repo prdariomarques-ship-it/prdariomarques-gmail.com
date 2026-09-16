@@ -649,4 +649,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('[FlowCore] Falha ao iniciar o servidor:', err);
+  process.exit(1);
+});
