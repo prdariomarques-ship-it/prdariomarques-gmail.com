@@ -128,17 +128,9 @@ export type {
   PolicyAssignment,
   PolicyCategory,
   PolicyStatus,
-  PolicyScope,
-  GovernanceAuthority,
   PolicyMetric,
   RuleOperator,
-} from './types/policy.ts';
-
-export {
-  isClientSpecificMandate,
-  isOfficeWideCompliance,
-  getPolicyScopeDelineation,
-} from './types/policy.ts';
+} from './policyEngine';
 
 export {
   isClientMandate,
@@ -446,7 +438,7 @@ export interface ClientRiskProfile {
   recommendedActions?: string[];
 }
 
-export interface PmxWealthAgentTelemetry {
+export interface FlowCoreAgentTelemetry {
   activeAgents: {
     name: string;
     role: string;

@@ -18,7 +18,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { ComplianceAlert } from '../../types';
-import { AIInsightCard } from './AIInsightCard';
+import { AIInsightCard } from '../AIInsightCard';
 
 export interface ComplianceAlertCardProps {
   alert: ComplianceAlert;

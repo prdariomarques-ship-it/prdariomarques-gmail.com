@@ -1,5 +1,5 @@
 {
-  "name": "PMX Wealth - Compliance de Carteiras",
+  "name": "FlowCore Conformidade v1.2",
   "description": "Sistema integrado de monitoramento de desenquadramento de investimentos, alertas de compliance e rebalanceamento inteligente de portfólios.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

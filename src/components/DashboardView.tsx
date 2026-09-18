@@ -29,6 +29,7 @@ import { ThirtyDayComplianceHistoryChart } from './ThirtyDayComplianceHistoryCha
 import { RebalancePerformanceIndexCard } from './RebalancePerformanceIndexCard';
 import { ImmediateLiquidityIndexCard } from './ImmediateLiquidityIndexCard';
 import { SelectedPortfolioHistoryChart } from './SelectedPortfolioHistoryChart';
+import { AssetCorrelationMap } from './AssetCorrelationMap';
 import { AssetClassFilterBar } from './AssetClassFilterBar';
 import { PortfolioSectorRiskHeatmap } from './PortfolioSectorRiskHeatmap';
 import { GlobalAssetDistributionChart } from './GlobalAssetDistributionChart';
@@ -404,6 +405,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         alerts={alerts}
         selectedPortfolioId={selectedDashboardPortfolioId}
         onSelectPortfolio={setSelectedDashboardPortfolioId}
+      />
+
+      {/* MAPA DE CORRELAÇÃO DE ATIVOS (HEAT MAP) */}
+      <AssetCorrelationMap 
+        portfolio={portfolios.find(p => p.id === selectedDashboardPortfolioId) || portfolios[0] || null} 
       />
 
       {/* ADVISOR EXPERIENCE: Actionable Priority Cards */}

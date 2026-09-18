@@ -14,9 +14,15 @@ import {
   Briefcase,
   Layers,
   Sparkles,
+  Download,
+  Activity,
 } from 'lucide-react';
 import { Portfolio, AssetClass } from '../types';
 import { AssetPerformancePanel } from './common/AssetPerformancePanel';
+import { PortfolioHealth } from './PortfolioHealth';
+import { RebalanceSimulationModal } from './RebalanceSimulationModal';
+import { RiskAnalytics } from './RiskAnalytics';
+import { StressTestModal } from './StressTestModal';
 
 interface PortfoliosViewProps {
   portfolios: Portfolio[];
@@ -36,6 +42,8 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
   const currentPortfolio =
     portfolios.find((p) => p.id === selectedPortfolioId) || portfolios[0];
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
+  const [isRebalanceModalOpen, setIsRebalanceModalOpen] = useState(false);
+  const [isStressTestModalOpen, setIsStressTestModalOpen] = useState(false);
 
   // Helper to calculate actual totals by class
   const classTotals: Record<string, number> = {
@@ -55,6 +63,64 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
   }
 
   const totalVal = currentPortfolio ? currentPortfolio.assets.reduce((s, a) => s + a.totalValue, 0) : 0;
+
+  const handleDownloadReport = () => {
+    if (!currentPortfolio) return;
+
+    const lines = [
+      `RELATÓRIO DE CONFORMIDADE DA CARTEIRA`,
+      `=====================================`,
+      `Data do Relatório: ${new Date().toLocaleDateString('pt-BR')}`,
+      ``,
+      `[ DADOS DO CLIENTE ]`,
+      `Nome: ${currentPortfolio.clientName}`,
+      `Código: ${currentPortfolio.code}`,
+      `Gestor Responsável: ${currentPortfolio.manager}`,
+      `Perfil: ${currentPortfolio.profile}`,
+      `Benchmark: ${currentPortfolio.benchmark}`,
+      ``,
+      `[ RESUMO FINANCEIRO ]`,
+      `AUM (Patrimônio Total): R$ ${currentPortfolio.totalAum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      `Último Rebalanceamento: ${currentPortfolio.lastRebalanced}`,
+      `Status de Conformidade: ${currentPortfolio.status === 'CRITICAL' ? 'DESENQUADRADA' : currentPortfolio.status === 'WARNING' ? 'EM ATENÇÃO' : 'CONFORME (ENQUADRADA)'}`,
+      ``,
+      `[ ALOCAÇÃO ATUAL VS MANDATO (IPS) ]`
+    ];
+
+    currentPortfolio.mandateLimits.forEach(limit => {
+      const actualVal = classTotals[limit.assetClass] || 0;
+      const actualPct = totalVal > 0 ? (actualVal / totalVal) * 100 : 0;
+      
+      const dev = actualPct - limit.targetPercent;
+      let status = 'Normal';
+      if (actualPct > limit.maxPercent) status = 'Acima do Teto';
+      if (actualPct < limit.minPercent) status = 'Abaixo do Piso';
+
+      lines.push(`- ${limit.assetClass}:`);
+      lines.push(`  Alocação Real: ${actualPct.toFixed(2)}% (R$ ${actualVal.toLocaleString('pt-BR')})`);
+      lines.push(`  Limites do Mandato: Mínimo ${limit.minPercent}% | Target ${limit.targetPercent}% | Máximo ${limit.maxPercent}%`);
+      lines.push(`  Desvio do Target: ${dev > 0 ? '+' : ''}${dev.toFixed(2)} p.p.`);
+      lines.push(`  Status: ${status}`);
+    });
+
+    lines.push(``);
+    lines.push(`Gerado por: FlowCore Compliance System`);
+
+    const textContent = lines.join('\n');
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `FlowCore_Relatorio_${currentPortfolio.code}_${new Date().toISOString().slice(0, 10)}.txt`;
+    
+    // Fallback for copy to clipboard if possible, but mainly download it
+    navigator.clipboard.writeText(textContent).catch(() => {});
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
@@ -112,6 +178,9 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
 
       {currentPortfolio && (
         <div className="space-y-6">
+          {/* Portfolio Health Summary Component */}
+          <PortfolioHealth portfolio={currentPortfolio} />
+
           {/* Portfolio Header Details Card */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -144,6 +213,20 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
               {/* Action Buttons */}
               <div className="flex items-center space-x-2.5">
                 <button
+                  onClick={handleDownloadReport}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Baixar Relatório</span>
+                </button>
+                <button
+                  onClick={() => setIsStressTestModalOpen(true)}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Stress Test CVM</span>
+                </button>
+                <button
                   onClick={() => onOpenAgentWithPortfolio(currentPortfolio.id)}
                   className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
                 >
@@ -151,7 +234,7 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                   <span>Auditar com IA</span>
                 </button>
                 <button
-                  onClick={() => onStartRebalance(currentPortfolio.id)}
+                  onClick={() => setIsRebalanceModalOpen(true)}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5"
                 >
                   <Sliders className="w-3.5 h-3.5" />
@@ -285,6 +368,9 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
             </div>
           </div>
 
+          {/* Risk Analytics */}
+          <RiskAnalytics portfolio={currentPortfolio} />
+
           {/* Holdings Breakdown Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
@@ -332,10 +418,10 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                           {asset.assetClass}
                         </td>
                         <td className="py-2.5 px-3 text-right text-slate-300 font-mono">
-                          {asset.quantity.toLocaleString('pt-BR')}
+                          {asset.quantity !== undefined ? asset.quantity.toLocaleString('pt-BR') : '-'}
                         </td>
                         <td className="py-2.5 px-3 text-right text-slate-300 font-mono">
-                          R$ {asset.currentPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          {asset.currentPrice !== undefined ? `R$ ${asset.currentPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
                         </td>
                         <td className="py-2.5 px-3 text-right font-semibold text-white font-mono">
                           R$ {asset.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
@@ -359,6 +445,22 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {currentPortfolio && (
+        <RebalanceSimulationModal
+          isOpen={isRebalanceModalOpen}
+          onClose={() => setIsRebalanceModalOpen(false)}
+          portfolio={currentPortfolio}
+        />
+      )}
+
+      {currentPortfolio && (
+        <StressTestModal
+          isOpen={isStressTestModalOpen}
+          onClose={() => setIsStressTestModalOpen(false)}
+          portfolio={currentPortfolio}
+        />
       )}
     </div>
   );
