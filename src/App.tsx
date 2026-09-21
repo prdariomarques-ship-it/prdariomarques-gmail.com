@@ -9,6 +9,13 @@ import { AiComplianceChatView } from './components/AiComplianceChatView';
 import { LimitsConfigurationView } from './components/LimitsConfigurationView';
 import { ApiDiagnosticsView } from './components/ApiDiagnosticsView';
 import { BarbellStrategyView } from './components/BarbellStrategyView';
+import { CorrelationMatrixView } from './components/CorrelationMatrixView';
+import { CockpitExecutiveView } from './components/CockpitExecutiveView';
+import { CommandPrioritiesView } from './components/CommandPrioritiesView';
+import { ClientsDirectoryView } from './components/ClientsDirectoryView';
+import { MarketIntelligenceView } from './components/MarketIntelligenceView';
+import { WealthCopilotSidebar } from './components/layout/WealthCopilotSidebar';
+import { WealthCopilotTopBar } from './components/layout/WealthCopilotTopBar';
 import { ConnectivityLatencyBadge } from './components/common/ConnectivityLatencyBadge';
 import {
   Portfolio,
@@ -41,14 +48,16 @@ import { MarketTicker } from './components/common/MarketTicker';
 import { PWAInstallButton } from './components/PWAInstallButton';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabKey>('cockpit');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [globalSearch, setGlobalSearch] = useState<string>('');
   const [dataMode, setDataMode] = useState<DataMode>('LIVE');
   const [simulationScenario, setSimulationScenario] = useState<SimulationScenario>('REBALANCE_IDEAL');
   const [projectionScenario, setProjectionScenario] = useState<ProjectionScenario>('FULL_PIPELINE');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [alerts, setAlerts] = useState<ComplianceAlert[]>([]);
   const [performanceAlerts, setPerformanceAlerts] = useState<PerformanceAlert[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('port-001');
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('port-dario-001');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [agentInitialQuery, setAgentInitialQuery] = useState<string>('');
@@ -577,7 +586,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200 relative">
+    <div className="min-h-screen bg-[#070D18] text-slate-100 flex flex-row font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative">
       {/* Toast flutuante de Notificação Imediata quando novo alerta crítico for detectado */}
       <NotificationToastContainer
         notifications={activeToasts}
@@ -588,264 +597,318 @@ export default function App() {
         onToggleSound={handleToggleSound}
       />
 
-      {/* Global Market Overview Ticker */}
-      <MarketTicker />
-
-      {/* Top Application Header com Sino e Central de Notificações */}
-      <Header
+      {/* Menu Lateral Estilo Wealth Copilot */}
+      <WealthCopilotSidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        onSelectTab={(tab) => setActiveTab(tab)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         criticalAlertsCount={criticalCount}
         warningAlertsCount={warningCount}
-        onResetData={handleResetData}
-        isResetting={isResetting}
-        dataMode={dataMode}
-        setDataMode={handleSetDataMode}
-        notifications={notifications}
-        unreadNotificationsCount={unreadNotificationsCount}
-        onMarkNotificationAsRead={handleMarkNotificationAsRead}
-        onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
-        onClearNotifications={handleClearNotifications}
-        onNotificationRebalance={handleStartRebalance}
-        onNotificationViewAlerts={() => setActiveTab('alerts')}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
-        onSimulateShock={handleSimulateShock}
-        isSimulatingShock={isSimulatingShock}
-        onForceScan={() => fetchData()}
-        isScanning={isScanning}
-        channelSettings={channelSettings}
-        onOpenNotificationSettings={() => setIsSettingsModalOpen(true)}
         onOpenApiSecurity={() => setIsApiSecurityModalOpen(true)}
-        hasAuthError={hasAuthError}
       />
 
-      {/* Banner de Alerta Crítico quando a API responder com 401 Unauthorized */}
-      {hasAuthError && (
-        <div
-          id="auth-error-banner"
-          className="bg-rose-950/95 border-b border-rose-500/50 px-4 sm:px-6 lg:px-8 py-2.5 text-xs text-rose-200 flex flex-wrap items-center justify-between gap-2 shadow-lg"
-        >
-          <div className="flex items-center space-x-2">
-            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
-            <span>
-              <strong>Acesso Negado (HTTP 401):</strong> {authErrorMessage || 'Token de API ausente ou inválido.'} Todas as rotas /api/* exigem autenticação Bearer válida.
-            </span>
-          </div>
-          <button
-            onClick={() => setIsApiSecurityModalOpen(true)}
-            className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer shadow-sm"
+      {/* Painel Principal de Conteúdo */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden min-h-screen bg-[#070D18]">
+        {/* Global Market Overview Ticker */}
+        <MarketTicker onNavigateTab={(tab) => setActiveTab(tab)} />
+
+        {/* Wealth Copilot Top Bar com Busca, Data/Hora, Perfil e Ações Rápidas */}
+        <WealthCopilotTopBar
+          onSearchQuery={(q) => setGlobalSearch(q)}
+          onOpenNotifications={() => setActiveTab('alerts')}
+          unreadNotificationsCount={unreadNotificationsCount}
+          dataMode={dataMode}
+          onToggleDataMode={() => handleSetDataMode(dataMode === 'LIVE' ? 'SIMULATION' : 'LIVE')}
+          onProfileClick={() => setActiveTab('cockpit')}
+          onOpenAiAssistant={(query) => {
+            setAgentInitialQuery(query || '');
+            setActiveTab('agent');
+          }}
+          onOpenApiSecurity={() => setIsApiSecurityModalOpen(true)}
+          soundEnabled={soundEnabled}
+          onToggleSound={handleToggleSound}
+        />
+
+        {/* Banner de Alerta Crítico quando a API responder com 401 Unauthorized */}
+        {hasAuthError && (
+          <div
+            id="auth-error-banner"
+            className="bg-rose-950/95 border-b border-rose-500/50 px-4 sm:px-6 lg:px-8 py-2.5 text-xs text-rose-200 flex flex-wrap items-center justify-between gap-2 shadow-lg"
           >
-            Configurar Token de API
-          </button>
-        </div>
-      )}
-
-      {/* FlowCore ACTIVE: Background Agent Status Bar com Sentinela e Verificação Imediata */}
-      <div className="bg-slate-950/90 border-b border-white/[0.06] px-4 sm:px-6 lg:px-8 py-2">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs gap-2">
-          <div className="flex items-center space-x-2.5">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="font-extrabold text-white text-[11px] tracking-wider uppercase flex items-center gap-1.5">
-              <Bot className="w-3.5 h-3.5 text-emerald-400" />
-              FlowCore ACTIVE
-            </span>
-            <ConnectivityLatencyBadge />
-            <span className="hidden sm:inline-block"><PWAInstallButton /></span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-300 text-[11px] hidden sm:inline">
-              Sentinel v2.4 monitorando {portfolios.length} carteiras, mandatos CVM 175 e IPS com alerta imediato ativo.
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-3 text-[11px]">
-            {/* Quick button to manage Secondary Notification Channels (Email/SMS) */}
-            <button
-              id="open-channel-settings-bar-btn"
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer text-[11px]"
-              title="Configurar canais secundários de notificação (E-mail & SMS)"
-            >
-              <div className="flex items-center gap-1">
-                <span className={channelSettings.email.enabled ? 'text-sky-400' : 'text-slate-500'}>
-                  <Mail className="w-3.5 h-3.5" />
-                </span>
-                <span className={channelSettings.sms.enabled ? 'text-amber-400' : 'text-slate-500'}>
-                  <Smartphone className="w-3.5 h-3.5" />
-                </span>
-              </div>
-              <span className="hidden md:inline text-slate-300 font-medium">Canais:</span>
-              <span className="font-semibold text-emerald-400">
-                {(channelSettings.email.enabled ? 1 : 0) + (channelSettings.sms.enabled ? 1 : 0)} ativos
+            <div className="flex items-center space-x-2">
+              <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+              <span>
+                <strong>Acesso Negado (HTTP 401):</strong> {authErrorMessage || 'Token de API ausente ou inválido.'} Todas as rotas /api/* exigem autenticação Bearer válida.
               </span>
-            </button>
-
-            <span className="text-slate-600 hidden sm:inline">•</span>
-
-            <span className="text-slate-400">
-              Última varredura: <span className="text-slate-200 font-mono font-medium">{lastScanTime}</span>
-            </span>
-
+            </div>
             <button
-              onClick={() => fetchData()}
-              disabled={isScanning}
-              className="inline-flex items-center gap-1 text-slate-400 hover:text-emerald-400 font-medium transition cursor-pointer disabled:opacity-50"
-              title="Executar varredura do Sentinel agora"
+              onClick={() => setIsApiSecurityModalOpen(true)}
+              className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer shadow-sm"
             >
-              <RefreshCw className={`w-3 h-3 ${isScanning ? 'animate-spin text-emerald-400' : ''}`} />
-              <span>{isScanning ? 'Verificando...' : 'Varredura'}</span>
+              Configurar Token de API
             </button>
+          </div>
+        )}
 
-            <span className="text-slate-600 hidden sm:inline">•</span>
+        {/* FlowCore ACTIVE: Background Agent Status Bar com Sentinela e Verificação Imediata */}
+        <div className="bg-slate-950/80 border-b border-white/[0.06] px-4 sm:px-6 lg:px-8 py-1.5">
+          <div className="w-full flex flex-wrap items-center justify-between text-xs gap-2">
+            <div className="flex items-center space-x-2.5">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-extrabold text-white text-[11px] tracking-wider uppercase flex items-center gap-1.5">
+                <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                FlowCore Sentinel
+              </span>
+              <ConnectivityLatencyBadge />
+              <span className="hidden sm:inline-block"><PWAInstallButton /></span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-300 text-[11px] hidden sm:inline">
+                Monitorando {portfolios.length} carteiras sob diretrizes CVM 175 e IPS com alerta imediato.
+              </span>
+            </div>
 
-            <button
-              onClick={handleSimulateShock}
-              disabled={isSimulatingShock}
-              className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 font-semibold transition cursor-pointer disabled:opacity-50 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 hover:bg-rose-500/20"
-              title="Gera um choque de volatilidade em tempo real para disparar a notificação imediata na interface"
-            >
-              <Zap className={`w-3 h-3 ${isSimulatingShock ? 'animate-bounce' : ''}`} />
-              <span>Simular Alerta Crítico</span>
-            </button>
+            <div className="flex items-center space-x-3 text-[11px]">
+              {/* Quick button to manage Secondary Notification Channels (Email/SMS) */}
+              <button
+                id="open-channel-settings-bar-btn"
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer text-[11px]"
+                title="Configurar canais secundários de notificação (E-mail & SMS)"
+              >
+                <div className="flex items-center gap-1">
+                  <span className={channelSettings.email.enabled ? 'text-sky-400' : 'text-slate-500'}>
+                    <Mail className="w-3 h-3" />
+                  </span>
+                  <span className={channelSettings.sms.enabled ? 'text-amber-400' : 'text-slate-500'}>
+                    <Smartphone className="w-3 h-3" />
+                  </span>
+                </div>
+                <span className="hidden md:inline text-slate-300 font-medium">Canais:</span>
+                <span className="font-semibold text-emerald-400">
+                  {(channelSettings.email.enabled ? 1 : 0) + (channelSettings.sms.enabled ? 1 : 0)} ativos
+                </span>
+              </button>
 
-            <span className="text-slate-600 hidden sm:inline">•</span>
+              <span className="text-slate-600 hidden sm:inline">•</span>
 
-            <span className="text-slate-400">
-              Modo:
-              <strong className={`ml-1 px-2 py-0.5 rounded font-mono font-bold ${
-                dataMode === 'LIVE'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : dataMode === 'SIMULATION'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-              }`}>
-                {dataMode === 'LIVE' ? 'LIVE DATA' : dataMode === 'SIMULATION' ? 'SIMULAÇÃO' : 'PROJEÇÃO'}
-              </strong>
-            </span>
+              <span className="text-slate-400">
+                Varredura: <span className="text-slate-200 font-mono font-medium">{lastScanTime}</span>
+              </span>
+
+              <button
+                onClick={() => fetchData()}
+                disabled={isScanning}
+                className="inline-flex items-center gap-1 text-slate-400 hover:text-emerald-400 font-medium transition cursor-pointer disabled:opacity-50"
+                title="Executar varredura do Sentinel agora"
+              >
+                <RefreshCw className={`w-3 h-3 ${isScanning ? 'animate-spin text-emerald-400' : ''}`} />
+                <span>{isScanning ? 'Verificando...' : 'Varredura'}</span>
+              </button>
+
+              <span className="text-slate-600 hidden sm:inline">•</span>
+
+              <button
+                onClick={handleSimulateShock}
+                disabled={isSimulatingShock}
+                className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 font-semibold transition cursor-pointer disabled:opacity-50 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 hover:bg-rose-500/20"
+                title="Gera um choque de volatilidade em tempo real para disparar a notificação imediata na interface"
+              >
+                <Zap className={`w-3 h-3 ${isSimulatingShock ? 'animate-bounce' : ''}`} />
+                <span>Choque</span>
+              </button>
+
+              <span className="text-slate-600 hidden sm:inline">•</span>
+
+              <span className="text-slate-400">
+                Modo:
+                <strong className={`ml-1 px-2 py-0.5 rounded font-mono font-bold ${
+                  dataMode === 'LIVE'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : dataMode === 'SIMULATION'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                    : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                }`}>
+                  {dataMode === 'LIVE' ? 'LIVE' : dataMode === 'SIMULATION' ? 'SIMULAÇÃO' : 'PROJEÇÃO'}
+                </strong>
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Banner de Controle Interativo para Modo Simulação Sandbox e Modo Projeção Estatística */}
+        {dataMode !== 'LIVE' && (
+          <DataModeControlBanner
+            dataMode={dataMode}
+            onSetDataMode={handleSetDataMode}
+            simulationScenario={simulationScenario}
+            onSelectSimulationScenario={setSimulationScenario}
+            projectionScenario={projectionScenario}
+            onSelectProjectionScenario={setProjectionScenario}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            baseAum={baseAum}
+            effectiveAum={effectiveAum}
+            criticalAlertsCount={criticalCount}
+            complianceRate={complianceRate}
+          />
+        )}
+
+        {/* Main Content Area */}
+        <main className="flex-1 w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <ErrorBoundary
+            key={activeTab}
+            fallbackTitle="Falha na Renderização do Modo Selecionado"
+            onReset={() => handleSetDataMode('LIVE')}
+          >
+            {activeTab === 'cockpit' && (
+              <CockpitExecutiveView
+                portfolios={effectivePortfolios}
+                alerts={effectiveAlerts}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onStartRebalance={handleStartRebalance}
+                dataMode={dataMode}
+                searchQuery={globalSearch}
+                onOpenAiQuery={(q) => {
+                  setAgentInitialQuery(q);
+                  setActiveTab('agent');
+                }}
+              />
+            )}
+
+            {activeTab === 'command-center' && (
+              <CommandPrioritiesView
+                portfolios={effectivePortfolios}
+                alerts={effectiveAlerts}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onStartRebalance={handleStartRebalance}
+                dataMode={dataMode}
+              />
+            )}
+
+            {activeTab === 'clients' && (
+              <ClientsDirectoryView
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+              />
+            )}
+
+            {activeTab === 'market' && (
+              <MarketIntelligenceView />
+            )}
+
+            {activeTab === 'dashboard' && (
+              <DashboardView
+                portfolios={effectivePortfolios}
+                alerts={effectiveAlerts}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onStartRebalance={handleStartRebalance}
+                dataMode={dataMode}
+              />
+            )}
+
+            {activeTab === 'owner' && (
+              <OwnerCommandCenterView
+                portfolios={effectivePortfolios}
+                alerts={effectiveAlerts}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onStartRebalance={handleStartRebalance}
+                dataMode={dataMode}
+              />
+            )}
+
+            {activeTab === 'alerts' && (
+              <AlertsView
+                alerts={effectiveAlerts}
+                onStartRebalance={handleStartRebalance}
+                onSelectPortfolio={handleSelectPortfolio}
+              />
+            )}
+
+            {activeTab === 'portfolios' && (
+              <PortfoliosView
+                portfolios={effectivePortfolios}
+                selectedPortfolioId={selectedPortfolioId}
+                onSelectPortfolio={setSelectedPortfolioId}
+                onStartRebalance={handleStartRebalance}
+                onOpenAgentWithPortfolio={handleOpenAgentWithPortfolio}
+              />
+            )}
+
+            {activeTab === 'simulator' && (
+              <RebalanceSimulatorView
+                portfolios={effectivePortfolios}
+                selectedPortfolioId={selectedPortfolioId}
+                onSelectPortfolio={setSelectedPortfolioId}
+                onRebalanceExecuted={handleRebalanceExecuted}
+                onNavigateTab={setActiveTab}
+              />
+            )}
+
+            {activeTab === 'agent' && (
+              <AiComplianceChatView
+                portfolios={effectivePortfolios}
+                alerts={effectiveAlerts}
+                initialQuery={agentInitialQuery}
+              />
+            )}
+
+            {activeTab === 'limits' && (
+              <LimitsConfigurationView
+                portfolios={effectivePortfolios}
+                onUpdateLimits={handleUpdateLimits}
+                onResetLimits={handleResetLimits}
+                currentAlerts={effectiveAlerts}
+              />
+            )}
+
+            {activeTab === 'correlation' && (
+              <CorrelationMatrixView
+                portfolios={effectivePortfolios}
+                alerts={effectiveAlerts}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+              />
+            )}
+
+            {activeTab === 'barbell' && (
+              <BarbellStrategyView
+                portfolios={effectivePortfolios}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onSelectPortfolio={handleSelectPortfolio}
+              />
+            )}
+
+            {activeTab === 'api-diagnostics' && (
+              <ApiDiagnosticsView />
+            )}
+          </ErrorBoundary>
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-slate-900 border-t border-slate-800 text-slate-500 py-3 text-xs">
+          <div className="w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold text-slate-400">FlowCore Wealth Copilot</span>
+              <span>•</span>
+              <span>MPX Wealth Management &amp; Multi-Custódia</span>
+            </div>
+            <div className="flex items-center space-x-4 text-[11px]">
+              <span>🟢 Normal: No limite</span>
+              <span>🟡 Atenção: ≤ 5 p.p.</span>
+              <span>🔴 Crítico: &gt; 5 p.p.</span>
+            </div>
+          </div>
+        </footer>
       </div>
-
-      {/* Banner de Controle Interativo para Modo Simulação Sandbox e Modo Projeção Estatística */}
-      <DataModeControlBanner
-        dataMode={dataMode}
-        onSetDataMode={handleSetDataMode}
-        simulationScenario={simulationScenario}
-        onSelectSimulationScenario={setSimulationScenario}
-        projectionScenario={projectionScenario}
-        onSelectProjectionScenario={setProjectionScenario}
-        onNavigateTab={(tab) => setActiveTab(tab)}
-        baseAum={baseAum}
-        effectiveAum={effectiveAum}
-        criticalAlertsCount={criticalCount}
-        complianceRate={complianceRate}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <ErrorBoundary
-          key={activeTab}
-          fallbackTitle="Falha na Renderização do Modo Selecionado"
-          onReset={() => handleSetDataMode('LIVE')}
-        >
-          {activeTab === 'dashboard' && (
-            <DashboardView
-              portfolios={effectivePortfolios}
-              alerts={effectiveAlerts}
-              onSelectPortfolio={handleSelectPortfolio}
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onStartRebalance={handleStartRebalance}
-              dataMode={dataMode}
-            />
-          )}
-
-          {activeTab === 'owner' && (
-            <OwnerCommandCenterView
-              portfolios={effectivePortfolios}
-              alerts={effectiveAlerts}
-              onSelectPortfolio={handleSelectPortfolio}
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onStartRebalance={handleStartRebalance}
-              dataMode={dataMode}
-            />
-          )}
-
-          {activeTab === 'alerts' && (
-            <AlertsView
-              alerts={effectiveAlerts}
-              onStartRebalance={handleStartRebalance}
-              onSelectPortfolio={handleSelectPortfolio}
-            />
-          )}
-
-          {activeTab === 'portfolios' && (
-            <PortfoliosView
-              portfolios={effectivePortfolios}
-              selectedPortfolioId={selectedPortfolioId}
-              onSelectPortfolio={setSelectedPortfolioId}
-              onStartRebalance={handleStartRebalance}
-              onOpenAgentWithPortfolio={handleOpenAgentWithPortfolio}
-            />
-          )}
-
-          {activeTab === 'simulator' && (
-            <RebalanceSimulatorView
-              portfolios={effectivePortfolios}
-              selectedPortfolioId={selectedPortfolioId}
-              onSelectPortfolio={setSelectedPortfolioId}
-              onRebalanceExecuted={handleRebalanceExecuted}
-            />
-          )}
-
-          {activeTab === 'agent' && (
-            <AiComplianceChatView
-              portfolios={effectivePortfolios}
-              alerts={effectiveAlerts}
-              initialQuery={agentInitialQuery}
-            />
-          )}
-
-          {activeTab === 'limits' && (
-            <LimitsConfigurationView
-              portfolios={effectivePortfolios}
-              onUpdateLimits={handleUpdateLimits}
-              onResetLimits={handleResetLimits}
-              currentAlerts={effectiveAlerts}
-            />
-          )}
-
-          
-          {activeTab === 'barbell' && (
-            <BarbellStrategyView
-              portfolios={effectivePortfolios}
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onSelectPortfolio={handleSelectPortfolio}
-            />
-          )}
-          {activeTab === 'api-diagnostics' && (
-            <ApiDiagnosticsView />
-          )}
-        </ErrorBoundary>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-slate-500 py-4 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="font-semibold text-slate-400">FlowCore Compliance System</span>
-            <span>•</span>
-            <span>Regras CVM 175, Anbima &amp; Governança de Portfólio</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <span>🟢 Normal: No limite</span>
-            <span>🟡 Atenção: ≤ 5 p.p.</span>
-            <span>🔴 Crítico: &gt; 5 p.p.</span>
-          </div>
-        </div>
-      </footer>
 
       {/* Modal de Configuração de Canais Secundários de Alerta (E-mail & SMS) */}
       <NotificationSettingsModal

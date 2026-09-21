@@ -15,11 +15,16 @@ import {
   Key,
   Lock,
   Dumbbell,
+  Layers,
 } from 'lucide-react';
 import { DataMode, ComplianceNotification, NotificationChannelSettings } from '../types';
 import { NotificationCenterDropdown } from './NotificationCenterDropdown';
 
 export type TabKey =
+  | 'cockpit'
+  | 'command-center'
+  | 'clients'
+  | 'market'
   | 'dashboard'
   | 'owner'
   | 'alerts'
@@ -28,7 +33,8 @@ export type TabKey =
   | 'agent'
   | 'limits'
   | 'api-diagnostics'
-  | 'barbell';
+  | 'barbell'
+  | 'correlation';
 
 interface HeaderProps {
   activeTab: TabKey;
@@ -327,6 +333,17 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Dumbbell className="w-4 h-4 mr-2" />
             Estratégia Barbell
+          </button>
+          <button
+            onClick={() => setActiveTab('correlation')}
+            className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition whitespace-nowrap ${
+              activeTab === 'correlation'
+                ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Layers className="w-4 h-4 mr-2" />
+            Matriz de Correlação
           </button>
 
           <button
