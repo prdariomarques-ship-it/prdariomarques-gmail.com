@@ -29,7 +29,7 @@ export const RiskAnalytics: React.FC<RiskAnalyticsProps> = ({ portfolio }) => {
       currentVal = currentVal * (1 + change);
       
       // Also calculate benchmark (CDI) which is smooth
-      const cdiReturn = 0.008; // approx 0.8% am
+      const cdiReturn = 0.0103; // approx 1.03% a.m. (~13,15% a.a.)
       const benchmarkVal = baseVal * 0.95 * Math.pow(1 + cdiReturn, 12 - i);
 
       data.push({
@@ -59,10 +59,10 @@ export const RiskAnalytics: React.FC<RiskAnalyticsProps> = ({ portfolio }) => {
       <div className="p-4 border-b border-slate-800 bg-slate-950/40 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-indigo-400" />
-          <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">Risk Analytics & Volatilidade</h3>
+          <h3 className="text-sm font-semibold text-slate-100 uppercase tracking-wide">Risk Analytics & Volatilidade</h3>
         </div>
-        <div className="text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-800 flex items-center gap-1.5">
-          <Info className="w-3 h-3" />
+        <div className="text-xs text-slate-300 font-medium bg-slate-900 px-2 py-1 rounded border border-slate-700 flex items-center gap-1.5">
+          <Info className="w-3.5 h-3.5 text-cyan-400" />
           Modelo de Risco Quantitativo
         </div>
       </div>
@@ -73,33 +73,33 @@ export const RiskAnalytics: React.FC<RiskAnalyticsProps> = ({ portfolio }) => {
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-slate-950/60 p-4 rounded-lg border border-slate-800/80">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-400">Beta (vs IBOV)</span>
+              <span className="text-xs text-slate-300 font-medium">Beta (vs IBOV)</span>
               <Activity className="w-3.5 h-3.5 text-indigo-400" />
             </div>
             <div className="flex items-baseline gap-2">
               <strong className="text-2xl font-bold text-white">{riskMetrics.beta.toFixed(2)}</strong>
-              <span className="text-xs text-slate-500">{riskMetrics.beta > 1 ? 'Mais Volátil' : 'Defensivo'}</span>
+              <span className="text-xs text-slate-300 font-medium">{riskMetrics.beta > 1 ? 'Mais Volátil' : 'Defensivo'}</span>
             </div>
           </div>
 
           <div className="bg-slate-950/60 p-4 rounded-lg border border-slate-800/80">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-400">Índice Sharpe</span>
+              <span className="text-xs text-slate-300 font-medium">Índice Sharpe</span>
               <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
             </div>
             <div className="flex items-baseline gap-2">
               <strong className="text-2xl font-bold text-white">{riskMetrics.sharpe.toFixed(2)}</strong>
-              <span className="text-xs text-slate-500">Prêmio por Risco</span>
+              <span className="text-xs text-slate-300 font-medium">Prêmio por Risco</span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 block mb-1">Volatilidade (a.a)</span>
+              <span className="text-[11px] text-slate-300 font-medium block mb-1">Volatilidade (a.a)</span>
               <strong className="text-lg font-bold text-white">{riskMetrics.volatility}%</strong>
             </div>
             <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 block mb-1">VaR (95% 1M)</span>
+              <span className="text-[11px] text-slate-300 font-medium block mb-1">VaR (95% 1M)</span>
               <strong className="text-lg font-bold text-rose-400">{riskMetrics.var95}%</strong>
             </div>
           </div>
@@ -107,7 +107,7 @@ export const RiskAnalytics: React.FC<RiskAnalyticsProps> = ({ portfolio }) => {
 
         {/* Volatility Chart */}
         <div className="lg:col-span-2 flex flex-col">
-          <h4 className="text-xs font-semibold text-slate-400 mb-4">Evolução Patrimonial vs Benchmark (12M)</h4>
+          <h4 className="text-xs font-semibold text-slate-200 mb-4">Evolução Patrimonial vs Benchmark (12M)</h4>
           <div className="flex-1 min-h-[200px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={volatilityData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
@@ -117,19 +117,26 @@ export const RiskAnalytics: React.FC<RiskAnalyticsProps> = ({ portfolio }) => {
                     <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="date" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.6} vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#475569" 
+                  tick={{ fill: '#CBD5E1', fontSize: 11, fontWeight: 500 }}
+                  tickLine={false} 
+                  axisLine={{ stroke: '#475569' }} 
+                />
                 <YAxis 
                   stroke="#475569" 
-                  fontSize={10} 
+                  tick={{ fill: '#CBD5E1', fontSize: 11, fontWeight: 500 }} 
                   tickLine={false} 
-                  axisLine={false}
+                  axisLine={{ stroke: '#475569' }}
                   tickFormatter={(val) => `R$${(val / 1000000).toFixed(1)}M`}
-                  width={60}
+                  width={65}
                 />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', fontSize: '12px', borderRadius: '8px' }}
-                  itemStyle={{ color: '#e2e8f0' }}
+                  contentStyle={{ backgroundColor: '#090F1D', borderColor: '#334155', fontSize: '12px', borderRadius: '8px' }}
+                  itemStyle={{ color: '#F8FAFC' }}
+                  labelStyle={{ color: '#CBD5E1', fontWeight: 600, marginBottom: '4px' }}
                   formatter={(value: number) => `R$ ${(value / 1000000).toFixed(2)}M`}
                 />
                 <Area 
@@ -145,7 +152,7 @@ export const RiskAnalytics: React.FC<RiskAnalyticsProps> = ({ portfolio }) => {
                   type="monotone" 
                   dataKey="benchmark" 
                   name="CDI (Benchmark)" 
-                  stroke="#475569" 
+                  stroke="#94A3B8" 
                   strokeWidth={2}
                   strokeDasharray="4 4"
                   dot={false}

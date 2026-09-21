@@ -92,11 +92,11 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
         );
       } else if (text.toLowerCase().includes('mercado') || text.toLowerCase().includes('mudou')) {
         setAiResponse(
-          'O Ibovespa recua 1,2% em 129.650 pts influenciado pela curva de juros DI (+4 bps). Em Nova York, Nasdaq avança +1,2% com semicondutores. Dólar opera em queda a R$ 5,02 (-0,4%).'
+          'O Ibovespa opera em 127.850 pts (-0,35%) com realização no setor financeiro. Em Nova York, Nasdaq avança a 21.150 pts (+0,65%) e S&P 500 em 5.980 pts. O Dólar opera cotado a R$ 5,82 (+0,45%), o CDI em 13,15% a.a. e a Selic Meta em 13,25% a.a.'
         );
       } else if (text.toLowerCase().includes('treasury')) {
         setAiResponse(
-          'O rendimento da US 10Y subiu +12 bps para 4,22% após dados de inflação ao produtor mais resilientes nos EUA, estressando a duration de bonds offshore e exigindo calibração da carteira Avenue.'
+          'O rendimento da US 10Y opera em 4,45% a.a. refletindo dados de mercado de trabalho nos EUA, enquanto o DI futuro Jan 27 precifica 15,10% a.a., exigindo calibragem de duration nos mandatos de crédito privado e offshore.'
         );
       } else {
         setAiResponse(
@@ -508,10 +508,10 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
 
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-black text-emerald-400 tracking-tight">
-                    +14,8%
+                    +15,4%
                   </span>
                 </div>
-                <span className="text-xs text-slate-400">vs. 8,2% (CDI)</span>
+                <span className="text-xs text-slate-300 font-medium">vs. 12,4% (CDI)</span>
               </div>
 
               {/* Dual Comparison Line Chart */}
@@ -539,10 +539,10 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
                   />
                   <circle cx="240" cy="10" r="3.5" fill="#10B981" />
                   <text x="200" y="8" fill="#10B981" fontSize="9" fontWeight="bold">
-                    +14,8%
+                    +15,4%
                   </text>
-                  <text x="205" y="44" fill="#60A5FA" fontSize="8">
-                    +8,2%
+                  <text x="205" y="44" fill="#60A5FA" fontSize="8" fontWeight="bold">
+                    +12,4%
                   </text>
                 </svg>
               </div>
@@ -583,11 +583,11 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase">
-                        <th className="pb-2 font-medium">Cliente</th>
-                        <th className="pb-2 font-medium text-center">Atual</th>
-                        <th className="pb-2 font-medium text-center">Limite</th>
-                        <th className="pb-2 font-medium text-right">Desvio</th>
+                      <tr className="text-slate-200 border-b border-slate-800 text-[11px] font-semibold uppercase tracking-wider">
+                        <th className="pb-2 font-semibold">Cliente</th>
+                        <th className="pb-2 font-semibold text-center">Atual</th>
+                        <th className="pb-2 font-semibold text-center">Limite</th>
+                        <th className="pb-2 font-semibold text-right">Desvio</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
@@ -604,11 +604,11 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
                             <p className="leading-none group-hover:text-rose-300 transition">
                               Carteira Miguel
                             </p>
-                            <span className="text-[10px] text-slate-500">Renda Variável</span>
+                            <span className="text-[11px] text-slate-300 font-medium">Renda Variável</span>
                           </div>
                         </td>
-                        <td className="py-2.5 text-center text-slate-300">42%</td>
-                        <td className="py-2.5 text-center text-slate-400">30%</td>
+                        <td className="py-2.5 text-center text-slate-200 font-medium">42%</td>
+                        <td className="py-2.5 text-center text-slate-300 font-medium">30%</td>
                         <td className="py-2.5 text-right font-bold text-rose-400">+12 p.p.</td>
                       </tr>
 
@@ -625,11 +625,11 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
                             <p className="leading-none group-hover:text-amber-300 transition">
                               Carteira Wilson
                             </p>
-                            <span className="text-[10px] text-slate-500">Crédito Privado</span>
+                            <span className="text-[11px] text-slate-300 font-medium">Crédito Privado</span>
                           </div>
                         </td>
-                        <td className="py-2.5 text-center text-slate-300">22%</td>
-                        <td className="py-2.5 text-center text-slate-400">15%</td>
+                        <td className="py-2.5 text-center text-slate-200 font-medium">22%</td>
+                        <td className="py-2.5 text-center text-slate-300 font-medium">15%</td>
                         <td className="py-2.5 text-right font-bold text-amber-400">+7 p.p.</td>
                       </tr>
 
@@ -646,21 +646,21 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
                             <p className="leading-none group-hover:text-amber-300 transition">
                               Carteira Dário
                             </p>
-                            <span className="text-[10px] text-slate-500">Internacional / Tech</span>
+                            <span className="text-[11px] text-slate-300 font-medium">Internacional / Tech</span>
                           </div>
                         </td>
-                        <td className="py-2.5 text-center text-slate-300">18%</td>
-                        <td className="py-2.5 text-center text-slate-400">12%</td>
+                        <td className="py-2.5 text-center text-slate-200 font-medium">18%</td>
+                        <td className="py-2.5 text-center text-slate-300 font-medium">12%</td>
                         <td className="py-2.5 text-right font-bold text-amber-400">+6 p.p.</td>
                       </tr>
 
                       <tr>
-                        <td className="py-2 font-medium text-slate-400 flex items-center gap-2">
+                        <td className="py-2 font-medium text-slate-200 flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500" />
                           <span>Demais carteiras</span>
                         </td>
-                        <td className="py-2 text-center text-slate-500">—</td>
-                        <td className="py-2 text-center text-slate-500">—</td>
+                        <td className="py-2 text-center text-slate-400 font-medium">—</td>
+                        <td className="py-2 text-center text-slate-400 font-medium">—</td>
                         <td className="py-2 text-right text-[11px] font-semibold text-emerald-400">
                           Em conformidade
                         </td>
@@ -692,20 +692,20 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase">
-                        <th className="pb-1.5 font-medium">Ativo</th>
-                        <th className="pb-1.5 font-medium text-center">Valor</th>
-                        <th className="pb-1.5 font-medium text-center">Variação</th>
-                        <th className="pb-1.5 font-medium text-right">Hoje</th>
+                      <tr className="text-slate-200 border-b border-slate-800 text-[11px] font-semibold uppercase tracking-wider">
+                        <th className="pb-1.5 font-semibold">Ativo</th>
+                        <th className="pb-1.5 font-semibold text-center">Valor</th>
+                        <th className="pb-1.5 font-semibold text-center">Variação</th>
+                        <th className="pb-1.5 font-semibold text-right">Hoje</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
                       {INITIAL_MARKET_ASSETS.slice(0, 7).map((item) => (
                         <tr key={item.ticker} className="hover:bg-slate-800/30">
-                          <td className="py-1.5 text-slate-200 font-medium">
+                          <td className="py-1.5 text-slate-100 font-medium">
                             <span className="truncate">{item.name}</span>
                           </td>
-                          <td className="py-1.5 text-center text-slate-300 font-mono text-[11px]">
+                          <td className="py-1.5 text-center text-slate-200 font-mono text-xs">
                             {item.value}
                           </td>
                           <td

@@ -142,30 +142,30 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         
         <div className="flex gap-6 mb-3 pb-3 border-b border-slate-800">
           <div className="flex flex-col">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-0.5">Alocação Atual</span>
+            <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold mb-0.5">Alocação Atual</span>
             <span className="text-indigo-400 font-mono font-bold text-sm">{data.Atual}%</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-0.5">Estratégia Alvo</span>
+            <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold mb-0.5">Estratégia Alvo</span>
             <span className="text-emerald-400 font-mono font-bold text-sm">{data.Alvo}%</span>
           </div>
         </div>
         
         {data.assets && data.assets.length > 0 ? (
           <div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">
-              Composição Atual & Lógica de Mapeamento
+            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-2 block">
+              Composição Atual &amp; Lógica de Mapeamento
             </span>
             <ul className="space-y-3">
               {data.assets.map((asset: any, idx: number) => (
                 <li key={idx} className="text-xs">
                   <div className="flex justify-between items-start mb-1">
-                    <span className="text-slate-200 font-medium truncate pr-2">{asset.name}</span>
-                    <span className="text-slate-400 font-mono font-semibold whitespace-nowrap">{asset.allocationPercent.toFixed(1)}%</span>
+                    <span className="text-slate-100 font-semibold truncate pr-2">{asset.name}</span>
+                    <span className="text-slate-300 font-mono font-semibold whitespace-nowrap">{asset.allocationPercent.toFixed(1)}%</span>
                   </div>
-                  <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800/80">
-                    <p className="text-[10.5px] text-slate-400 leading-relaxed">
-                      <span className="text-indigo-400/80 font-medium mr-1">Racional:</span>
+                  <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      <span className="text-indigo-300 font-semibold mr-1">Racional:</span>
                       {asset.mappingReason}
                     </p>
                   </div>
@@ -174,7 +174,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             </ul>
           </div>
         ) : (
-          <p className="text-xs text-slate-500 italic mt-2">Nenhum ativo alocado neste bloco.</p>
+          <p className="text-xs text-slate-400 italic mt-2">Nenhum ativo alocado neste bloco.</p>
         )}
       </div>
     );
@@ -482,9 +482,21 @@ export const BarbellStrategyView: React.FC<BarbellStrategyViewProps> = ({ portfo
               data={chartData}
               margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} unit="%" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.6} vertical={false} />
+              <XAxis 
+                dataKey="name" 
+                stroke="#475569" 
+                tick={{ fill: '#CBD5E1', fontSize: 12, fontWeight: 500 }} 
+                tickLine={false} 
+                axisLine={{ stroke: '#475569' }} 
+              />
+              <YAxis 
+                stroke="#475569" 
+                tick={{ fill: '#CBD5E1', fontSize: 12, fontWeight: 500 }} 
+                tickLine={false} 
+                axisLine={{ stroke: '#475569' }} 
+                unit="%" 
+              />
               <RechartsTooltip 
                 cursor={{ fill: '#334155', opacity: 0.4 }}
                 content={<CustomTooltip />}

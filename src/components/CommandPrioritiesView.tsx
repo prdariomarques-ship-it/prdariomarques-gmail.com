@@ -249,12 +249,12 @@ export const CommandPrioritiesView: React.FC<CommandPrioritiesViewProps> = ({
 
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase">
-                  <th className="pb-2 font-medium">Cliente</th>
-                  <th className="pb-2 font-medium text-center">Atual</th>
-                  <th className="pb-2 font-medium text-center">Limite</th>
-                  <th className="pb-2 font-medium text-right">Desvio</th>
-                  <th className="pb-2 font-medium text-right"></th>
+                <tr className="text-slate-200 border-b border-slate-800 text-[11px] font-semibold uppercase tracking-wider">
+                  <th className="pb-2 font-semibold">Cliente</th>
+                  <th className="pb-2 font-semibold text-center">Atual</th>
+                  <th className="pb-2 font-semibold text-center">Limite</th>
+                  <th className="pb-2 font-semibold text-right">Desvio</th>
+                  <th className="pb-2 font-semibold text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -268,13 +268,13 @@ export const CommandPrioritiesView: React.FC<CommandPrioritiesViewProps> = ({
                       <p className="group-hover:text-rose-300 transition font-bold">
                         Família Silva
                       </p>
-                      <span className="text-[10px] text-slate-400">Renda Variável</span>
+                      <span className="text-[11px] text-slate-300 font-medium">Renda Variável</span>
                     </div>
                   </td>
-                  <td className="py-2.5 text-center text-slate-300 font-mono">42%</td>
-                  <td className="py-2.5 text-center text-slate-400 font-mono">30%</td>
+                  <td className="py-2.5 text-center text-slate-200 font-mono font-medium">42%</td>
+                  <td className="py-2.5 text-center text-slate-300 font-mono font-medium">30%</td>
                   <td className="py-2.5 text-right font-bold text-rose-400">+12 p.p.</td>
-                  <td className="py-2.5 text-right text-slate-500 group-hover:text-white">
+                  <td className="py-2.5 text-right text-slate-400 group-hover:text-white">
                     <ChevronRight className="w-4 h-4 ml-auto" />
                   </td>
                 </tr>
@@ -289,13 +289,13 @@ export const CommandPrioritiesView: React.FC<CommandPrioritiesViewProps> = ({
                       <p className="group-hover:text-amber-300 transition font-bold">
                         Rocha Investimentos
                       </p>
-                      <span className="text-[10px] text-slate-400">Crédito Privado</span>
+                      <span className="text-[11px] text-slate-300 font-medium">Crédito Privado</span>
                     </div>
                   </td>
-                  <td className="py-2.5 text-center text-slate-300 font-mono">22%</td>
-                  <td className="py-2.5 text-center text-slate-400 font-mono">15%</td>
+                  <td className="py-2.5 text-center text-slate-200 font-mono font-medium">22%</td>
+                  <td className="py-2.5 text-center text-slate-300 font-mono font-medium">15%</td>
                   <td className="py-2.5 text-right font-bold text-amber-400">+7 p.p.</td>
-                  <td className="py-2.5 text-right text-slate-500 group-hover:text-white">
+                  <td className="py-2.5 text-right text-slate-400 group-hover:text-white">
                     <ChevronRight className="w-4 h-4 ml-auto" />
                   </td>
                 </tr>
@@ -310,29 +310,29 @@ export const CommandPrioritiesView: React.FC<CommandPrioritiesViewProps> = ({
                       <p className="group-hover:text-amber-300 transition font-bold">
                         Castro Family Office
                       </p>
-                      <span className="text-[10px] text-slate-400">Fundos Imobiliários</span>
+                      <span className="text-[11px] text-slate-300 font-medium">Fundos Imobiliários</span>
                     </div>
                   </td>
-                  <td className="py-2.5 text-center text-slate-300 font-mono">18%</td>
-                  <td className="py-2.5 text-center text-slate-400 font-mono">12%</td>
+                  <td className="py-2.5 text-center text-slate-200 font-mono font-medium">18%</td>
+                  <td className="py-2.5 text-center text-slate-300 font-mono font-medium">12%</td>
                   <td className="py-2.5 text-right font-bold text-amber-400">+6 p.p.</td>
-                  <td className="py-2.5 text-right text-slate-500 group-hover:text-white">
+                  <td className="py-2.5 text-right text-slate-400 group-hover:text-white">
                     <ChevronRight className="w-4 h-4 ml-auto" />
                   </td>
                 </tr>
 
                 <tr>
-                  <td className="py-2.5 font-medium text-slate-300 flex items-center gap-2">
+                  <td className="py-2.5 font-medium text-slate-200 flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                     <div>
                       <p className="font-semibold text-slate-200">Demais carteiras</p>
-                      <span className="text-[10px] text-emerald-400">Em conformidade</span>
+                      <span className="text-[11px] text-emerald-300 font-semibold">Em conformidade</span>
                     </div>
                   </td>
-                  <td className="py-2.5 text-center text-slate-500">—</td>
-                  <td className="py-2.5 text-center text-slate-500">—</td>
-                  <td className="py-2.5 text-right text-slate-500">—</td>
-                  <td className="py-2.5 text-right text-slate-500">
+                  <td className="py-2.5 text-center text-slate-400 font-medium">—</td>
+                  <td className="py-2.5 text-center text-slate-400 font-medium">—</td>
+                  <td className="py-2.5 text-right text-slate-400 font-medium">—</td>
+                  <td className="py-2.5 text-right text-slate-400">
                     <ChevronRight className="w-4 h-4 ml-auto" />
                   </td>
                 </tr>
@@ -387,20 +387,20 @@ export const CommandPrioritiesView: React.FC<CommandPrioritiesViewProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase">
-                    <th className="pb-2 font-medium">Ativo</th>
-                    <th className="pb-2 font-medium text-center">Valor</th>
-                    <th className="pb-2 font-medium text-center">Variação</th>
-                    <th className="pb-2 font-medium text-right">Hoje</th>
+                  <tr className="text-slate-200 border-b border-slate-800 text-[11px] font-semibold uppercase tracking-wider">
+                    <th className="pb-2 font-semibold">Ativo</th>
+                    <th className="pb-2 font-semibold text-center">Valor</th>
+                    <th className="pb-2 font-semibold text-center">Variação</th>
+                    <th className="pb-2 font-semibold text-right">Hoje</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {filteredMarket.map((item) => (
                     <tr key={item.ticker} className="hover:bg-slate-800/30">
-                      <td className="py-2 text-slate-200 font-medium">
+                      <td className="py-2 text-slate-100 font-medium">
                         {item.name}
                       </td>
-                      <td className="py-2 text-center text-slate-300 font-mono">
+                      <td className="py-2 text-center text-slate-200 font-mono">
                         {item.value} {item.unit}
                       </td>
                       <td

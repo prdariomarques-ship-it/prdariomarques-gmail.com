@@ -133,7 +133,7 @@ export const ClientsDirectoryView: React.FC<ClientsDirectoryViewProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-900/80 text-slate-400 border-b border-slate-800 text-[11px] uppercase tracking-wider font-semibold">
+              <tr className="bg-slate-900/90 text-slate-200 border-b border-slate-800 text-[11px] uppercase tracking-wider font-semibold">
                 <th className="py-3 px-4">Cliente &amp; Mandato</th>
                 <th className="py-3 px-4">Perfil</th>
                 <th className="py-3 px-4 text-right">Patrimônio (AUM)</th>
@@ -153,13 +153,13 @@ export const ClientsDirectoryView: React.FC<ClientsDirectoryViewProps> = ({
                       </div>
                       <div>
                         <p className="font-bold text-slate-100">{client.name}</p>
-                        <p className="text-[11px] text-slate-400">{client.portfolioName}</p>
+                        <p className="text-[11px] text-slate-300 font-medium">{client.portfolioName}</p>
                       </div>
                     </div>
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-300">
-                    <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px] font-medium">
+                  <td className="py-3.5 px-4 text-slate-200">
+                    <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px] font-medium text-slate-200">
                       {client.profile}
                     </span>
                   </td>
@@ -167,7 +167,7 @@ export const ClientsDirectoryView: React.FC<ClientsDirectoryViewProps> = ({
                   <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-100">
                     <div>
                       <span>R$ {(client.aumBRL / 1_000_000).toFixed(2)}M</span>
-                      <p className="text-[10px] text-slate-400 font-normal">
+                      <p className="text-[11px] text-slate-300 font-normal">
                         US$ {(client.aumUSD / 1_000_000).toFixed(2)}M
                       </p>
                     </div>
@@ -194,18 +194,18 @@ export const ClientsDirectoryView: React.FC<ClientsDirectoryViewProps> = ({
                     )}
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-300">
+                  <td className="py-3.5 px-4 text-slate-200">
                     <div>
                       <span className="font-medium">{client.mainClass}</span>
                       {client.deviation > 0 && (
-                        <p className="text-[10px] font-bold text-rose-400">
+                        <p className="text-[11px] font-bold text-rose-400">
                           {client.currentWeight}% (limite {client.targetWeight}%, +{client.deviation} p.p.)
                         </p>
                       )}
                     </div>
                   </td>
 
-                  <td className="py-3.5 px-4 text-slate-400 text-[11px]">
+                  <td className="py-3.5 px-4 text-slate-300 text-xs">
                     {client.lastContact}
                   </td>
 

@@ -112,11 +112,11 @@ export const GlobalAssetDistributionChart: React.FC<GlobalAssetDistributionChart
         <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl z-50">
           <p className="font-bold text-white mb-2">{data.name}</p>
           <div className="space-y-1 text-xs">
-            <p className="text-slate-300">
-              <span className="text-slate-500">Atual:</span> {formatCurrency(data.value)} ({data.percent.toFixed(1)}%)
+            <p className="text-slate-200">
+              <span className="text-slate-300 font-semibold">Atual:</span> {formatCurrency(data.value)} ({data.percent.toFixed(1)}%)
             </p>
-            <p className="text-slate-300">
-              <span className="text-slate-500">Meta:</span> {formatCurrency(data.targetValue)} ({data.targetPercent.toFixed(1)}%)
+            <p className="text-slate-200">
+              <span className="text-slate-300 font-semibold">Meta:</span> {formatCurrency(data.targetValue)} ({data.targetPercent.toFixed(1)}%)
             </p>
             {data.criticalCount > 0 && (
               <p className="text-rose-400 font-semibold mt-1">🔴 {data.criticalCount} Alertas Críticos</p>
@@ -194,7 +194,7 @@ export const GlobalAssetDistributionChart: React.FC<GlobalAssetDistributionChart
                             className="w-3 h-3 rounded-full inline-block" 
                             style={{ backgroundColor: entry.color }}
                           />
-                          <span className={`${hasAlert ? 'text-white font-semibold' : 'text-slate-400'}`}>
+                          <span className={`${hasAlert ? 'text-white font-semibold' : 'text-slate-200 font-medium'}`}>
                             {entry.value}
                           </span>
                         </li>

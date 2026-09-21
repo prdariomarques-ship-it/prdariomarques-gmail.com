@@ -178,24 +178,24 @@ export const RebalanceSimulationModal: React.FC<RebalanceSimulationModalProps> =
                   margin={{ top: 10, right: 20, left: -10, bottom: 10 }}
                   barGap={6}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.6} vertical={false} />
                   <XAxis
                     dataKey="assetClass"
-                    stroke="#64748B"
-                    tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 500 }}
-                    axisLine={{ stroke: '#334155' }}
+                    stroke="#475569"
+                    tick={{ fill: '#CBD5E1', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: '#475569' }}
                     tickLine={false}
                   />
                   <YAxis
-                    stroke="#64748B"
-                    tick={{ fill: '#94A3B8', fontSize: 10 }}
-                    axisLine={{ stroke: '#334155' }}
+                    stroke="#475569"
+                    tick={{ fill: '#CBD5E1', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: '#475569' }}
                     tickLine={false}
                     tickFormatter={(val) => `${val}%`}
                   />
                   <RechartsTooltip
                     contentStyle={{
-                      backgroundColor: '#0F172A',
+                      backgroundColor: '#090F1D',
                       borderColor: '#334155',
                       borderRadius: '8px',
                       fontSize: '11px',
@@ -210,8 +210,8 @@ export const RebalanceSimulationModal: React.FC<RebalanceSimulationModalProps> =
                     verticalAlign="top"
                     align="right"
                     formatter={(val) => {
-                      if (val === 'currentPercent') return <span className="text-[11px] text-indigo-300">Antes (Atual)</span>;
-                      if (val === 'projectedPercent') return <span className="text-[11px] text-emerald-400">Depois (Projetado)</span>;
+                      if (val === 'currentPercent') return <span className="text-[11px] text-indigo-300 font-semibold">Antes (Atual)</span>;
+                      if (val === 'projectedPercent') return <span className="text-[11px] text-emerald-400 font-semibold">Depois (Projetado)</span>;
                       return val;
                     }}
                   />
@@ -236,12 +236,12 @@ export const RebalanceSimulationModal: React.FC<RebalanceSimulationModalProps> =
 
           {/* Orders Table */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">
+            <h3 className="text-sm font-semibold text-slate-200 mb-3">
               Ordens Sugeridas por Classe
             </h3>
             <div className="border border-slate-800 rounded-lg overflow-hidden">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-950/80 text-xs uppercase text-slate-500 border-b border-slate-800">
+                <thead className="bg-slate-950/90 text-[11px] font-semibold uppercase tracking-wider text-slate-200 border-b border-slate-800">
                   <tr>
                     <th className="px-4 py-3">Ativo / Classe</th>
                     <th className="px-4 py-3">Ação</th>
@@ -253,31 +253,31 @@ export const RebalanceSimulationModal: React.FC<RebalanceSimulationModalProps> =
                 <tbody className="divide-y divide-slate-800/50">
                   {simulationSteps.map((step) => (
                     <tr key={step.assetClass} className="hover:bg-slate-800/20">
-                      <td className="px-4 py-3 font-medium text-slate-300">
+                      <td className="px-4 py-3 font-medium text-slate-200">
                         {step.assetClass}
                       </td>
                       <td className="px-4 py-3">
                         {step.type === 'BUY' ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-300 bg-emerald-400/20 px-2 py-1 rounded border border-emerald-500/30">
                             <TrendingUp className="w-3.5 h-3.5" /> COMPRAR
                           </span>
                         ) : step.type === 'SELL' ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-400 bg-rose-400/10 px-2 py-1 rounded">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-300 bg-rose-400/20 px-2 py-1 rounded border border-rose-500/30">
                             <TrendingDown className="w-3.5 h-3.5" /> VENDER
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-300 bg-slate-800 px-2 py-1 rounded">
                             MANTER
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-400 font-mono">
+                      <td className="px-4 py-3 text-right text-slate-200 font-mono">
                         {step.currentVal.toLocaleString('pt-BR', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-400 font-mono">
+                      <td className="px-4 py-3 text-right text-slate-200 font-mono">
                         {step.targetVal.toLocaleString('pt-BR', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,

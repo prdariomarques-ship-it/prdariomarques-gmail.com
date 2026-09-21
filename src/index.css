@@ -9,3 +9,54 @@
     display: none; /* Chrome, Safari and Opera */
   }
 }
+
+.markdown-body h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body h4 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body p {
+  margin-bottom: 0.6rem;
+  line-height: 1.6;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.6rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-body strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.markdown-body hr {
+  border-color: rgba(51, 65, 85, 0.6);
+  margin: 0.75rem 0;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #6366f1;
+  padding-left: 0.85rem;
+  background-color: rgba(99, 102, 241, 0.08);
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-radius: 0.375rem;
+  color: #c7d2fe;
+}

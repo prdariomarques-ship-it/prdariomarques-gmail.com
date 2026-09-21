@@ -52,8 +52,8 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [globalSearch, setGlobalSearch] = useState<string>('');
   const [dataMode, setDataMode] = useState<DataMode>('LIVE');
-  const [simulationScenario, setSimulationScenario] = useState<SimulationScenario>('REBALANCE_IDEAL');
-  const [projectionScenario, setProjectionScenario] = useState<ProjectionScenario>('FULL_PIPELINE');
+  const [simulationScenario, setSimulationScenario] = useState<SimulationScenario>('EQUITY_DROP_10');
+  const [projectionScenario, setProjectionScenario] = useState<ProjectionScenario>('BASELINE');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [alerts, setAlerts] = useState<ComplianceAlert[]>([]);
   const [performanceAlerts, setPerformanceAlerts] = useState<PerformanceAlert[]>([]);
@@ -546,9 +546,9 @@ export default function App() {
   const handleSetDataMode = (newMode: DataMode) => {
     setDataMode(newMode);
     if (newMode === 'SIMULATION') {
-      setSimulationScenario('REBALANCE_IDEAL');
+      setSimulationScenario('EQUITY_DROP_10');
     } else if (newMode === 'PROJECTION') {
-      setProjectionScenario('FULL_PIPELINE');
+      setProjectionScenario('BASELINE');
     }
   };
 
@@ -742,7 +742,7 @@ export default function App() {
         </div>
 
         {/* Banner de Controle Interativo para Modo Simulação Sandbox e Modo Projeção Estatística */}
-        {dataMode !== 'LIVE' && (
+        {(dataMode !== 'LIVE' || activeTab === 'simulator') && (
           <DataModeControlBanner
             dataMode={dataMode}
             onSetDataMode={handleSetDataMode}

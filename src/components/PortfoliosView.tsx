@@ -280,14 +280,14 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                 <Layers className="w-4 h-4 text-emerald-400" />
                 Alocação por Classe vs Limites do Mandato (IPS)
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 Comparativo direto dos limites regulatórios mínimos, meta (target) e teto máximo tolerado.
               </p>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10px] border-y border-slate-800">
+                <thead className="bg-slate-950/90 text-slate-200 uppercase tracking-wider text-[11px] font-semibold border-y border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Classe de Ativo</th>
                     <th className="py-2.5 px-3 text-right">Valor Atual (R$)</th>
@@ -343,13 +343,13 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                         <td className={`py-3 px-3 text-right ${statusColor}`}>
                           {actualPct.toFixed(1)}%
                         </td>
-                        <td className="py-3 px-3 text-right text-slate-400">
+                        <td className="py-3 px-3 text-right text-slate-300 font-medium">
                           {limit.minPercent}%
                         </td>
-                        <td className="py-3 px-3 text-right font-medium text-slate-300">
+                        <td className="py-3 px-3 text-right font-medium text-slate-200">
                           {limit.targetPercent}%
                         </td>
-                        <td className="py-3 px-3 text-right text-slate-400">
+                        <td className="py-3 px-3 text-right text-slate-300 font-medium">
                           {limit.maxPercent}%
                         </td>
                         <td className={`py-3 px-3 text-right ${statusColor}`}>
@@ -379,7 +379,7 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                   <Briefcase className="w-4 h-4 text-cyan-400" />
                   Composição dos Ativos em Carteira ({currentPortfolio.assets.length})
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-300">
                   Custódia de títulos públicos, ações, ETFs, FIIs e fundos de investimento.
                 </p>
               </div>
@@ -387,7 +387,7 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10px] border-y border-slate-800">
+                <thead className="bg-slate-950/90 text-slate-200 uppercase tracking-wider text-[11px] font-semibold border-y border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Ticker / Código</th>
                     <th className="py-2.5 px-3">Nome do Ativo</th>
@@ -414,13 +414,13 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                         <td className="py-2.5 px-3 text-slate-200">
                           {asset.name}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-400">
+                        <td className="py-2.5 px-3 text-slate-300 font-medium">
                           {asset.assetClass}
                         </td>
-                        <td className="py-2.5 px-3 text-right text-slate-300 font-mono">
+                        <td className="py-2.5 px-3 text-right text-slate-200 font-mono">
                           {asset.quantity !== undefined ? asset.quantity.toLocaleString('pt-BR') : '-'}
                         </td>
-                        <td className="py-2.5 px-3 text-right text-slate-300 font-mono">
+                        <td className="py-2.5 px-3 text-right text-slate-200 font-mono">
                           {asset.currentPrice !== undefined ? `R$ ${asset.currentPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
                         </td>
                         <td className="py-2.5 px-3 text-right font-semibold text-white font-mono">

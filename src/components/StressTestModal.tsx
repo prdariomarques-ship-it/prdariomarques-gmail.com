@@ -139,7 +139,7 @@ export const StressTestModal: React.FC<StressTestModalProps> = ({ isOpen, onClos
                     onChange={(e) => handleShockChange(ac, parseInt(e.target.value))}
                     className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                  <div className="flex justify-between text-[10px] text-slate-300 font-medium mt-1">
                     <span>-50%</span>
                     <span>0%</span>
                     <span>+50%</span>
@@ -151,7 +151,7 @@ export const StressTestModal: React.FC<StressTestModalProps> = ({ isOpen, onClos
             <div className="pt-4 border-t border-slate-800">
               <button onClick={() => {
                 setShocks({ 'Renda Fixa': 2, 'Renda Variável': -20, 'Internacional': -15, 'Multimercado': -5, 'Caixa': 0 })
-              }} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded border border-slate-700 transition">
+              }} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded border border-slate-700 transition">
                 Aplicar Cenário "Crise Global"
               </button>
             </div>
@@ -163,19 +163,19 @@ export const StressTestModal: React.FC<StressTestModalProps> = ({ isOpen, onClos
             {/* Top Stats */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">Impacto no AUM</span>
+                <span className="text-xs text-slate-300 font-medium block mb-1">Impacto no AUM</span>
                 <div className="flex items-baseline gap-2">
                   <span className={`text-2xl font-bold ${results?.aumChangePct && results.aumChangePct < 0 ? 'text-rose-400' : results?.aumChangePct && results.aumChangePct > 0 ? 'text-emerald-400' : 'text-white'}`}>
                     {results?.aumChangePct! > 0 ? '+' : ''}{results?.aumChangePct?.toFixed(2)}%
                   </span>
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-slate-300 mt-1 font-medium">
                   Novo AUM: R$ {results?.newTotalAum?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                 </div>
               </div>
               
               <div className={`p-4 rounded-xl border ${results?.isBreached ? 'bg-rose-500/10 border-rose-500/30' : 'bg-emerald-500/10 border-emerald-500/30'}`}>
-                <span className="text-xs text-slate-400 block mb-1">Status CVM 175 (Pós-Choque)</span>
+                <span className="text-xs text-slate-300 font-medium block mb-1">Status CVM 175 (Pós-Choque)</span>
                 <div className="flex items-center gap-2 mt-1">
                   {results?.isBreached ? (
                     <>
@@ -197,7 +197,7 @@ export const StressTestModal: React.FC<StressTestModalProps> = ({ isOpen, onClos
               <h3 className="text-sm font-semibold text-white mb-3">Repercussão na Alocação (Efeito Passivo)</h3>
               <div className="overflow-x-auto border border-slate-800 rounded-lg">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-950/80 text-slate-400">
+                  <thead className="bg-slate-950/90 text-slate-200 text-[11px] uppercase tracking-wider font-semibold">
                     <tr>
                       <th className="py-2.5 px-3">Classe</th>
                       <th className="py-2.5 px-3 text-right">Alocação Atual</th>
@@ -209,12 +209,12 @@ export const StressTestModal: React.FC<StressTestModalProps> = ({ isOpen, onClos
                   <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
                     {results?.breakdown.map((row, idx) => (
                       <tr key={idx} className="hover:bg-slate-800/40 transition">
-                        <td className="py-3 px-3 font-medium text-slate-200">{row.assetClass}</td>
-                        <td className="py-3 px-3 text-right text-slate-400">{row.oldPct.toFixed(1)}%</td>
-                        <td className={`py-3 px-3 text-right font-bold ${row.status === 'BREACH' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        <td className="py-3 px-3 font-medium text-slate-100">{row.assetClass}</td>
+                        <td className="py-3 px-3 text-right text-slate-200 font-mono">{row.oldPct.toFixed(1)}%</td>
+                        <td className={`py-3 px-3 text-right font-bold font-mono ${row.status === 'BREACH' ? 'text-rose-400' : 'text-emerald-400'}`}>
                           {row.newPct.toFixed(1)}%
                         </td>
-                        <td className="py-3 px-3 text-right text-slate-500 text-[10px]">
+                        <td className="py-3 px-3 text-right text-slate-300 font-mono text-[11px]">
                           [{row.min}% - {row.max}%]
                         </td>
                         <td className="py-3 px-3 text-center">

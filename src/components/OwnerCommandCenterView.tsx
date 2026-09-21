@@ -252,12 +252,12 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
                   Mensal Obrigatório
                 </span>
-                <span className="text-[10px] text-slate-500">CVM 175</span>
+                <span className="text-[10px] text-slate-300 font-medium">CVM 175</span>
               </div>
               <h3 className="font-bold text-white text-sm mt-2">
                 Relatório Mensal de Enquadramento Fiduciário
               </h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                 Consolidado de todas as carteiras de clientes sob gestão da MPX Wealth Management com demonstrativo de aderência aos mandatos.
               </p>
             </div>
@@ -278,12 +278,12 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
                   Compliance
                 </span>
-                <span className="text-[10px] text-slate-500">Tempo Real</span>
+                <span className="text-[10px] text-slate-300 font-medium">Tempo Real</span>
               </div>
               <h3 className="font-bold text-white text-sm mt-2">
                 Parecer de Desenquadramentos Ativos &amp; Planos de Cura
               </h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                 Detalhamento dos desvios vigentes (Miguel, Wilson e outros), causas-raiz de mercado e propostas de regularização (Art. 89).
               </p>
             </div>
@@ -304,12 +304,12 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   Multicarteira
                 </span>
-                <span className="text-[10px] text-slate-500">Itaú + Avenue</span>
+                <span className="text-[10px] text-slate-300 font-medium">Itaú + Avenue</span>
               </div>
               <h3 className="font-bold text-white text-sm mt-2">
                 Extrato Executivo Carteira Dário Marques Neto
               </h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                 Posição individualizada dos ativos locais e offshore (Itaú Private + Avenue) com métricas de duration, beta e liquidez.
               </p>
             </div>
@@ -333,7 +333,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               <Clock className="w-4 h-4 text-indigo-400" />
               Trilha de Auditoria &amp; Registro de Ações Fiduciárias
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-300 font-medium">
               Histórico cronológico de verificações normativas, overrides e simulações com identificador criptográfico.
             </p>
           </div>
@@ -354,7 +354,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
 
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10px] border-y border-slate-800">
+            <thead className="bg-slate-950/90 text-slate-200 uppercase tracking-wider text-[11px] font-semibold border-y border-slate-800">
               <tr>
                 <th className="py-3 px-4">Horário</th>
                 <th className="py-3 px-4">Ação / Evento</th>
@@ -368,11 +368,11 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
             <tbody className="divide-y divide-slate-800/60">
               {filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-800/30 transition">
-                  <td className="py-3 px-4 font-mono text-slate-400">{log.timestamp}</td>
+                  <td className="py-3 px-4 font-mono text-slate-300">{log.timestamp}</td>
                   <td className="py-3 px-4 font-semibold text-white">{log.action}</td>
-                  <td className="py-3 px-4 text-slate-300">{log.portfolioName}</td>
-                  <td className="py-3 px-4 text-slate-400">{log.regulationRule}</td>
-                  <td className="py-3 px-4 text-slate-300">{log.operator}</td>
+                  <td className="py-3 px-4 text-slate-200">{log.portfolioName}</td>
+                  <td className="py-3 px-4 text-slate-300">{log.regulationRule}</td>
+                  <td className="py-3 px-4 text-slate-200">{log.operator}</td>
                   <td className="py-3 px-4 text-center">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -390,7 +390,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
                         : 'Alerta'}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-500 text-[10px]">
+                  <td className="py-3 px-4 text-right font-mono text-slate-300 text-[11px]">
                     {log.hash}
                   </td>
                 </tr>

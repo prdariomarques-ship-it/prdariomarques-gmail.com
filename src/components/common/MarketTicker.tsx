@@ -39,13 +39,13 @@ export const MarketTicker: React.FC<MarketTickerProps> = ({ onNavigateTab }) => 
           if (Math.random() < 0.25) {
             const isJuros = asset.category === 'JUROS';
             const isCambio = asset.category === 'CAMBIO';
-            const numVal = parseFloat(asset.value.replace('.', '').replace(',', '.'));
+            const hasDecimals = isCambio || isJuros || !!asset.unit || asset.ticker === 'BRENT' || asset.ticker === 'IPCA';
+            const rawClean = asset.value.includes(',') ? asset.value.replace('.', '').replace(',', '.') : asset.value.replace(',', '.');
+            const numVal = parseFloat(rawClean);
             if (!isNaN(numVal)) {
-              const delta = (Math.random() - 0.48) * (isCambio ? 0.01 : isJuros ? 0.02 : 25);
-              const newVal = Math.max(0.1, numVal + delta);
-              const formatted = isCambio
-                ? newVal.toFixed(2).replace('.', ',')
-                : isJuros
+              const delta = (Math.random() - 0.48) * (isCambio ? 0.01 : isJuros ? 0.01 : asset.ticker === 'BRENT' ? 0.15 : 15);
+              const newVal = Math.max(0.01, numVal + delta);
+              const formatted = hasDecimals
                 ? newVal.toFixed(2).replace('.', ',')
                 : Math.round(newVal).toLocaleString('pt-BR');
               return {

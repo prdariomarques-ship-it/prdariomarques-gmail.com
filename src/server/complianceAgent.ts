@@ -325,7 +325,7 @@ export class ComplianceAgent {
    * Identifica ativos com subperformance severa, calculados de forma independente 
    * das regras regulatórias/mandatos, focando apenas no retorno vs benchmark (ex: CDI).
    */
-  public static evaluatePerformance(portfolio: Portfolio, cdi12m: number = 14.63, thresholdPP: number = -2.0): PerformanceAlert[] {
+  public static evaluatePerformance(portfolio: Portfolio, cdi12m: number = 13.15, thresholdPP: number = -2.0): PerformanceAlert[] {
     const alerts: PerformanceAlert[] = [];
     const timestamp = new Date().toISOString();
 

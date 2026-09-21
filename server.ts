@@ -25,7 +25,7 @@ import {
   dispatchScheduledSummaryReportRepo,
 } from './src/server/notificationChannelsRepo.ts';
 import { ComplianceAgent } from './src/server/complianceAgent.ts';
-import { askComplianceAgent } from './src/server/geminiService.ts';
+import { askComplianceAgent, explainRebalanceStrategy } from './src/server/geminiService.ts';
 import { RebalanceOrder, RebalanceExecutionResult } from './src/types.ts';
 
 dotenv.config();
@@ -574,6 +574,37 @@ app.post('/api/compliance/chat', async (req, res) => {
   } catch (error) {
     console.error('Error in compliance chat:', error);
     res.status(500).json({ success: false, error: 'Erro ao processar consulta de compliance' });
+  }
+});
+
+// Endpoint POST /api/compliance/explain-strategy
+// Utiliza o ComplianceAgent com Gemini para gerar parecer explicativo detalhado dos ajustes da estratégia
+app.post('/api/compliance/explain-strategy', async (req, res) => {
+  try {
+    const { portfolioId, strategy, orders, projectionData } = req.body;
+    const portfolio = (portfolioId ? getPortfolioByIdRepo(portfolioId) : null) || getPortfoliosRepo()[0];
+    if (!portfolio) {
+      return res.status(404).json({ success: false, error: 'Carteira não encontrada' });
+    }
+
+    const explanation = await explainRebalanceStrategy(
+      portfolio,
+      strategy || 'Moderate',
+      orders || [],
+      projectionData || []
+    );
+
+    res.json({
+      success: true,
+      strategy,
+      portfolioId: portfolio.id,
+      portfolioName: portfolio.name,
+      explanation,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error explaining rebalance strategy:', error);
+    res.status(500).json({ success: false, error: 'Falha ao gerar explicação de estratégia pelo ComplianceAgent' });
   }
 });
 

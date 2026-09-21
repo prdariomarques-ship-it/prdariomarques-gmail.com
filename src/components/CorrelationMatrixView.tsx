@@ -787,16 +787,16 @@ export const CorrelationMatrixView: React.FC<CorrelationMatrixViewProps> = ({
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr>
-                    <th className="p-3 text-slate-500 font-semibold uppercase text-[10px] w-48">
+                    <th className="p-3 text-slate-200 font-semibold uppercase text-[11px] tracking-wider w-48">
                       Carteira
                     </th>
                     {currentSelectedPortfolios.map((p) => (
                       <th
                         key={`th-${p.id}`}
-                        className="p-3 text-slate-300 font-semibold text-center truncate max-w-[120px]"
+                        className="p-3 text-slate-100 font-semibold text-center truncate max-w-[120px]"
                         title={p.name}
                       >
-                        <span className="truncate block font-mono">{p.name.replace('Carteira ', '')}</span>
+                        <span className="truncate block font-mono text-xs">{p.name.replace('Carteira ', '')}</span>
                       </th>
                     ))}
                   </tr>
@@ -806,8 +806,8 @@ export const CorrelationMatrixView: React.FC<CorrelationMatrixViewProps> = ({
                     <tr key={`row-${p1.id}`} className="hover:bg-slate-800/20 transition">
                       <td className="p-3 font-semibold text-white truncate max-w-[190px] border-r border-slate-800/80">
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-400 font-mono text-[10px]">{p1.code}</span>
-                          <span className="truncate">{p1.name}</span>
+                          <span className="text-slate-300 font-mono text-[11px]">{p1.code}</span>
+                          <span className="truncate text-slate-100">{p1.name}</span>
                         </div>
                       </td>
 
@@ -816,7 +816,7 @@ export const CorrelationMatrixView: React.FC<CorrelationMatrixViewProps> = ({
                         if (isSelf) {
                           return (
                             <td key={`cell-${p1.id}-${p2.id}`} className="p-2 text-center">
-                              <div className="h-12 w-full rounded-xl bg-slate-950/60 border border-slate-800/40 flex items-center justify-center text-slate-600 text-[11px] font-mono">
+                              <div className="h-12 w-full rounded-xl bg-slate-950/60 border border-slate-800/40 flex items-center justify-center text-slate-400 text-[11px] font-mono">
                                 1.00 (Self)
                               </div>
                             </td>
@@ -989,7 +989,7 @@ export const CorrelationMatrixView: React.FC<CorrelationMatrixViewProps> = ({
 
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10px] border-y border-slate-800">
+              <thead className="bg-slate-950/90 text-slate-200 uppercase tracking-wider text-[11px] font-semibold border-y border-slate-800">
                 <tr>
                   <th className="py-3 px-4">Ativo &amp; Ticker</th>
                   <th className="py-3 px-4">Classe &amp; Setor</th>
@@ -1018,17 +1018,17 @@ export const CorrelationMatrixView: React.FC<CorrelationMatrixViewProps> = ({
                           <p className="font-bold text-white group-hover:text-cyan-300 transition">
                             {asset.ticker}
                           </p>
-                          <p className="text-[11px] text-slate-400 truncate max-w-xs">
+                          <p className="text-[11px] text-slate-300 truncate max-w-xs font-normal">
                             {asset.name}
                           </p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-3 px-4 text-slate-300">
+                    <td className="py-3 px-4 text-slate-200">
                       <div>
-                        <span className="font-medium text-slate-200">{asset.assetClass}</span>
-                        <span className="text-[10px] text-slate-500 block">{asset.sector}</span>
+                        <span className="font-medium text-slate-100">{asset.assetClass}</span>
+                        <span className="text-[11px] text-slate-300 block">{asset.sector}</span>
                       </div>
                     </td>
 

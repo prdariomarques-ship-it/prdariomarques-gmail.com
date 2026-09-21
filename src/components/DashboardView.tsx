@@ -1018,7 +1018,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {portfolio.name}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                    <div className="text-xs text-slate-300 font-medium flex items-center gap-2">
                       <span>{portfolio.profile}</span>
                       <span>•</span>
                       <span>R$ {(portfolio.totalAum / 1000000).toFixed(2)}M</span>
@@ -1040,7 +1040,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {isNorm && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1" />}
                       {isCrit ? 'CRÍTICO' : isWarn ? 'ATENÇÃO' : 'ENQUADRADA'}
                     </span>
-                    <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-end">
+                    <div className="text-[11px] text-slate-300 font-medium mt-1 flex items-center justify-end">
                       <Clock className="w-2.5 h-2.5 mr-1" />
                       {portfolio.lastRebalanced}
                     </div>
