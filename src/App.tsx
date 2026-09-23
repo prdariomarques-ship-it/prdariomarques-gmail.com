@@ -30,7 +30,7 @@ import {
 } from './types';
 import { initialPortfolios } from './server/portfolioRepo';
 import { ComplianceAgent } from './server/complianceAgent';
-import { RefreshCw, ShieldAlert, Sparkles, Activity, Bot, Zap, Bell, CheckCircle2, Mail, Smartphone } from 'lucide-react';
+import { RefreshCw, ShieldAlert, Sparkles, Activity, Bot, Zap, Bell, CheckCircle2, Mail, Smartphone, MessageSquare } from 'lucide-react';
 import { NotificationToastContainer } from './components/NotificationToast';
 import { NotificationSettingsModal } from './components/NotificationSettingsModal';
 import { ApiSecurityModal } from './components/common/ApiSecurityModal';
@@ -70,7 +70,7 @@ export default function App() {
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [lastScanTime, setLastScanTime] = useState<string>('agora');
 
-  // Canais Secundários de Notificação (E-mail e SMS)
+  // Canais Secundários de Notificação (E-mail, SMS & WhatsApp Gêmeo Digital)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [channelSettings, setChannelSettings] = useState<NotificationChannelSettings>({
     email: {
@@ -84,6 +84,15 @@ export default function App() {
       phoneNumber: '+55 (11) 91234-5678',
       sendOnCriticalOnly: true,
     },
+    whatsapp: {
+      enabled: true,
+      ownerAlertPhone: '5511999998888',
+      personalInstanceName: 'numero_principal',
+      twinModeEnabled: true,
+      alertOnRiskGateTrigger: true,
+      sendOnCriticalOnly: true,
+    },
+    whatsappOwnerAlertPhone: '5511999998888',
     inAppAudio: true,
   });
   const [dispatchLogs, setDispatchLogs] = useState<SecondaryDispatchLog[]>([]);
@@ -123,7 +132,7 @@ export default function App() {
   // Carrega configurações de canais secundários do backend
   const fetchNotificationSettings = async () => {
     try {
-      const data = await safeJsonFetch('/api/notifications/settings');
+      const data = await safeJsonFetch('/api/notifications/settings?unmasked=true');
       if (data && data.success && data.settings) {
         setChannelSettings(data.settings);
       }
@@ -144,13 +153,27 @@ export default function App() {
     }
   };
 
-  // Salva configurações de canais secundários
+  // Salva configurações de canais secundários (WhatsApp Gêmeo, E-mail & SMS)
   const handleSaveNotificationSettings = async (newSettings: NotificationChannelSettings) => {
     try {
-      const data = await safeJsonFetch('/api/notifications/settings', {
+      // Atualização otimista e garantida do estado local channelSettings
+      setChannelSettings((prev) => ({
+        ...prev,
+        ...newSettings,
+        whatsappOwnerAlertPhone:
+          newSettings.whatsappOwnerAlertPhone || newSettings.whatsapp?.ownerAlertPhone,
+        whatsapp: newSettings.whatsapp
+          ? {
+              ...prev.whatsapp,
+              ...newSettings.whatsapp,
+            }
+          : prev.whatsapp,
+      }));
+
+      const data = await safeJsonFetch('/api/notifications/settings?unmasked=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSettings),
+        body: JSON.stringify({ ...newSettings, unmasked: true }),
       });
       if (data && data.success && data.settings) {
         setChannelSettings(data.settings);
@@ -162,7 +185,10 @@ export default function App() {
   };
 
   // Despacha teste sob demanda
-  const handleTestDispatch = async (channel: 'EMAIL' | 'SMS' | 'ALL', recipient?: string) => {
+  const handleTestDispatch = async (
+    channel: 'EMAIL' | 'SMS' | 'WHATSAPP' | 'ALL',
+    recipient?: string
+  ) => {
     try {
       const data = await safeJsonFetch('/api/notifications/dispatches/test', {
         method: 'POST',
@@ -674,24 +700,41 @@ export default function App() {
             </div>
 
             <div className="flex items-center space-x-3 text-[11px]">
-              {/* Quick button to manage Secondary Notification Channels (Email/SMS) */}
+              {/* Quick button to manage Notification Channels (WhatsApp / Email / SMS) */}
               <button
                 id="open-channel-settings-bar-btn"
                 onClick={() => setIsSettingsModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer text-[11px]"
-                title="Configurar canais secundários de notificação (E-mail & SMS)"
+                title="Configurar canais de notificação (WhatsApp Gêmeo, E-mail & SMS)"
               >
                 <div className="flex items-center gap-1">
-                  <span className={channelSettings.email.enabled ? 'text-sky-400' : 'text-slate-500'}>
+                  <span
+                    className={
+                      channelSettings.whatsapp?.enabled ? 'text-emerald-400' : 'text-slate-500'
+                    }
+                    title="WhatsApp (Gêmeo & Risk Gate)"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                  </span>
+                  <span
+                    className={channelSettings.email.enabled ? 'text-sky-400' : 'text-slate-500'}
+                    title="E-mail de Compliance"
+                  >
                     <Mail className="w-3 h-3" />
                   </span>
-                  <span className={channelSettings.sms.enabled ? 'text-amber-400' : 'text-slate-500'}>
+                  <span
+                    className={channelSettings.sms.enabled ? 'text-amber-400' : 'text-slate-500'}
+                    title="SMS de Urgência"
+                  >
                     <Smartphone className="w-3 h-3" />
                   </span>
                 </div>
                 <span className="hidden md:inline text-slate-300 font-medium">Canais:</span>
                 <span className="font-semibold text-emerald-400">
-                  {(channelSettings.email.enabled ? 1 : 0) + (channelSettings.sms.enabled ? 1 : 0)} ativos
+                  {(channelSettings.whatsapp?.enabled ? 1 : 0) +
+                    (channelSettings.email.enabled ? 1 : 0) +
+                    (channelSettings.sms.enabled ? 1 : 0)}{' '}
+                  ativos
                 </span>
               </button>
 

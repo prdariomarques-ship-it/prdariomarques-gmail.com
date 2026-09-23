@@ -271,10 +271,21 @@ export interface SmsChannelConfig {
   sendOnCriticalOnly: boolean;
 }
 
+export interface WhatsAppChannelConfig {
+  enabled: boolean;
+  ownerAlertPhone: string; // WHATSAPP_OWNER_ALERT_PHONE (E.164 sem +, ex: 5511999998888)
+  personalInstanceName?: string; // ex: 'numero_principal'
+  twinModeEnabled?: boolean;
+  alertOnRiskGateTrigger?: boolean;
+  sendOnCriticalOnly?: boolean;
+}
+
 export interface NotificationChannelSettings {
   officeId?: string;
   email: EmailChannelConfig;
   sms: SmsChannelConfig;
+  whatsapp?: WhatsAppChannelConfig;
+  whatsappOwnerAlertPhone?: string; // WHATSAPP_OWNER_ALERT_PHONE para monitoramento de risco do gêmeo
   inAppAudio: boolean;
   logRetentionDays?: number;
   updatedAt?: string;
@@ -282,7 +293,7 @@ export interface NotificationChannelSettings {
 
 export interface SecondaryDispatchLog {
   id: string;
-  channel: 'EMAIL' | 'SMS';
+  channel: 'EMAIL' | 'SMS' | 'WHATSAPP';
   recipient: string;
   status: 'SENT' | 'SIMULATED_DELIVERY' | 'FAILED';
   subjectOrTitle: string;
@@ -291,7 +302,7 @@ export interface SecondaryDispatchLog {
   alertId?: string;
   portfolioName?: string;
   severity?: AlertSeverity;
-  reportType?: 'CRITICAL_ALERT' | 'SCHEDULED_SUMMARY' | 'TEST';
+  reportType?: 'CRITICAL_ALERT' | 'SCHEDULED_SUMMARY' | 'TEST' | 'TWIN_RISK_GATE';
 }
 
 export interface AlertComplianceSnapshot {

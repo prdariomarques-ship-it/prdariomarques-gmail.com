@@ -30,6 +30,7 @@ const DEFAULT_OFFICE_ID = 'office-matriz-01';
 const officeSettingsMap = new Map<string, NotificationChannelSettings>();
 
 function createDefaultSettings(officeId: string = DEFAULT_OFFICE_ID): NotificationChannelSettings {
+  const defaultOwnerPhone = process.env.WHATSAPP_OWNER_ALERT_PHONE || '5511999998888';
   return {
     officeId,
     email: {
@@ -48,6 +49,15 @@ function createDefaultSettings(officeId: string = DEFAULT_OFFICE_ID): Notificati
       phoneNumber: '+55 (11) 91234-5678',
       sendOnCriticalOnly: true,
     },
+    whatsapp: {
+      enabled: true,
+      ownerAlertPhone: defaultOwnerPhone,
+      personalInstanceName: process.env.EVOLUTION_PERSONAL_INSTANCE || 'numero_principal',
+      twinModeEnabled: process.env.WHATSAPP_TWIN_MODE_ENABLED === 'true' || true,
+      alertOnRiskGateTrigger: true,
+      sendOnCriticalOnly: true,
+    },
+    whatsappOwnerAlertPhone: defaultOwnerPhone,
     inAppAudio: true,
     updatedAt: new Date().toISOString(),
   };
@@ -108,12 +118,22 @@ export function getNotificationSettingsRepo(options?: { unmasked?: boolean; offi
       ...settings.sms,
       phoneNumber: maskPhoneNumber(settings.sms.phoneNumber),
     },
+    whatsapp: settings.whatsapp
+      ? {
+          ...settings.whatsapp,
+          ownerAlertPhone: maskPhoneNumber(settings.whatsapp.ownerAlertPhone),
+        }
+      : undefined,
+    whatsappOwnerAlertPhone: maskPhoneNumber(
+      settings.whatsappOwnerAlertPhone || settings.whatsapp?.ownerAlertPhone || ''
+    ),
   };
 }
 
 export function updateNotificationSettingsRepo(
   newSettings: Partial<NotificationChannelSettings>,
-  officeId?: string
+  officeId?: string,
+  unmasked: boolean = false
 ): NotificationChannelSettings {
   const targetOfficeId = officeId || newSettings.officeId || currentSettings.officeId || DEFAULT_OFFICE_ID;
   if (!officeSettingsMap.has(targetOfficeId)) {
@@ -132,6 +152,25 @@ export function updateNotificationSettingsRepo(
     targetPhone = newSettings.sms.phoneNumber.trim();
   }
 
+  // Tratamento do WhatsApp Owner Alert Phone para monitoramento de risco do gêmeo
+  let targetWhatsappPhone =
+    target.whatsapp?.ownerAlertPhone ||
+    target.whatsappOwnerAlertPhone ||
+    process.env.WHATSAPP_OWNER_ALERT_PHONE ||
+    '5511999998888';
+
+  const incomingPhone =
+    newSettings.whatsapp?.ownerAlertPhone || newSettings.whatsappOwnerAlertPhone;
+  if (incomingPhone && !incomingPhone.includes('***')) {
+    targetWhatsappPhone = incomingPhone.trim().replace(/[^\d]/g, '');
+  }
+
+  // Sincroniza variável de ambiente de runtime para o backend e monitoramento de risco
+  if (targetWhatsappPhone) {
+    process.env.WHATSAPP_OWNER_ALERT_PHONE = targetWhatsappPhone;
+    console.log(`[NotificationRepo] WHATSAPP_OWNER_ALERT_PHONE atualizado com sucesso: ${targetWhatsappPhone}`);
+  }
+
   const updated: NotificationChannelSettings = {
     ...target,
     ...newSettings,
@@ -146,6 +185,28 @@ export function updateNotificationSettingsRepo(
       ...(newSettings.sms || {}),
       phoneNumber: targetPhone,
     },
+    whatsapp: {
+      enabled: newSettings.whatsapp?.enabled ?? target.whatsapp?.enabled ?? true,
+      ownerAlertPhone: targetWhatsappPhone,
+      personalInstanceName:
+        newSettings.whatsapp?.personalInstanceName ||
+        target.whatsapp?.personalInstanceName ||
+        process.env.EVOLUTION_PERSONAL_INSTANCE ||
+        'numero_principal',
+      twinModeEnabled:
+        newSettings.whatsapp?.twinModeEnabled ??
+        target.whatsapp?.twinModeEnabled ??
+        true,
+      alertOnRiskGateTrigger:
+        newSettings.whatsapp?.alertOnRiskGateTrigger ??
+        target.whatsapp?.alertOnRiskGateTrigger ??
+        true,
+      sendOnCriticalOnly:
+        newSettings.whatsapp?.sendOnCriticalOnly ??
+        target.whatsapp?.sendOnCriticalOnly ??
+        true,
+    },
+    whatsappOwnerAlertPhone: targetWhatsappPhone,
     updatedAt: new Date().toISOString(),
   };
 
@@ -154,7 +215,7 @@ export function updateNotificationSettingsRepo(
     currentSettings = updated;
   }
 
-  return getNotificationSettingsRepo({ unmasked: false, officeId: targetOfficeId });
+  return getNotificationSettingsRepo({ unmasked, officeId: targetOfficeId });
 }
 
 export function getSecondaryDispatchLogsRepo(): SecondaryDispatchLog[] {
@@ -257,6 +318,35 @@ export function dispatchSecondaryAlertsRepo(alerts: ComplianceAlert[]): Secondar
       dispatchLogs.unshift(smsLog);
       newLogs.push(smsLog);
     }
+
+    // Disparo WhatsApp para o número de alerta do proprietário (WHATSAPP_OWNER_ALERT_PHONE)
+    const isWhatsappEnabled = settings.whatsapp?.enabled ?? true;
+    const ownerPhone =
+      settings.whatsapp?.ownerAlertPhone ||
+      settings.whatsappOwnerAlertPhone ||
+      process.env.WHATSAPP_OWNER_ALERT_PHONE;
+    if (
+      isWhatsappEnabled &&
+      ownerPhone &&
+      (!settings.whatsapp?.sendOnCriticalOnly || alert.severity === 'CRITICAL')
+    ) {
+      const maskedOwnerPhone = maskPhoneNumber(ownerPhone);
+      const whatsappLog: SecondaryDispatchLog = {
+        id: `disp-wa-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        channel: 'WHATSAPP',
+        recipient: maskedOwnerPhone,
+        status: 'SENT',
+        subjectOrTitle: `[WHATSAPP TWIN ALERT] Risco Crítico em ${alert.portfolioName}`,
+        bodyPreview: `🚨 [GÊMEO DIGITAL - RISK GATE] Alerta enviado ao número do proprietário (${maskedOwnerPhone}): A carteira ${alert.portfolioName} apresentou desenquadramento crítico em ${alert.assetClass} (${alert.currentPercent.toFixed(1)}% vs teto ${alert.maxPercent.toFixed(1)}%). Excesso: R$ ${alert.excessValueBRL.toLocaleString('pt-BR')}.`,
+        sentAt: timeFormatted,
+        alertId: alert.id,
+        portfolioName: alert.portfolioName,
+        severity: alert.severity,
+        reportType: 'TWIN_RISK_GATE',
+      };
+      dispatchLogs.unshift(whatsappLog);
+      newLogs.push(whatsappLog);
+    }
   }
 
   // Limita histórico a 50 itens
@@ -271,7 +361,7 @@ export function dispatchSecondaryAlertsRepo(alerts: ComplianceAlert[]): Secondar
  * Envia um disparo de teste sob demanda para validar o canal secundário
  */
 export function dispatchTestSecondaryAlertRepo(
-  channel: 'EMAIL' | 'SMS' | 'ALL',
+  channel: 'EMAIL' | 'SMS' | 'WHATSAPP' | 'ALL',
   testRecipient?: string
 ): { success: boolean; dispatched: SecondaryDispatchLog[]; message: string } {
   const settings = currentSettings;
@@ -313,6 +403,30 @@ export function dispatchTestSecondaryAlertRepo(
       sentAt: timeFormatted,
       portfolioName: 'Carteira de Teste Sentinel',
       severity: 'CRITICAL',
+    };
+    dispatchLogs.unshift(log);
+    dispatched.push(log);
+  }
+
+  if (channel === 'WHATSAPP' || channel === 'ALL') {
+    const rawWa =
+      testRecipient ||
+      settings.whatsapp?.ownerAlertPhone ||
+      settings.whatsappOwnerAlertPhone ||
+      process.env.WHATSAPP_OWNER_ALERT_PHONE ||
+      '5511999998888';
+    const maskedWa = maskPhoneNumber(rawWa);
+    const log: SecondaryDispatchLog = {
+      id: `disp-test-wa-${Date.now()}`,
+      channel: 'WHATSAPP',
+      recipient: maskedWa,
+      status: 'SENT',
+      subjectOrTitle: '[WHATSAPP TWIN TESTE] Verificação de Alerta de Risco do Proprietário',
+      bodyPreview: `[FlowCore TESTE WHATSAPP] Notificação de teste para o WHATSAPP_OWNER_ALERT_PHONE (${maskedWa}). O canal de monitoramento do gêmeo digital com risk gate está configurado e operacional no backend.`,
+      sentAt: timeFormatted,
+      portfolioName: 'Carteira de Teste Sentinel',
+      severity: 'CRITICAL',
+      reportType: 'TEST',
     };
     dispatchLogs.unshift(log);
     dispatched.push(log);

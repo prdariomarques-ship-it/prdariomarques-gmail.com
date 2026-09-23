@@ -472,8 +472,9 @@ app.post('/api/portfolios/simulate-shock', (req, res) => {
 // Endpoint GET /api/notifications/settings
 app.get('/api/notifications/settings', (req, res) => {
   try {
+    const unmasked = req.query.unmasked === 'true';
     const officeId = (req.query.office_id || req.query.officeId) as string | undefined;
-    const settings = getNotificationSettingsRepo({ officeId });
+    const settings = getNotificationSettingsRepo({ unmasked, officeId });
     res.json({ success: true, settings });
   } catch (error) {
     console.error('Error getting notification settings:', error);
@@ -485,7 +486,8 @@ app.get('/api/notifications/settings', (req, res) => {
 app.post('/api/notifications/settings', (req, res) => {
   try {
     const officeId = (req.body.office_id || req.body.officeId || req.query.office_id || req.query.officeId) as string | undefined;
-    const updated = updateNotificationSettingsRepo(req.body, officeId);
+    const unmasked = req.query.unmasked === 'true' || req.body.unmasked === true;
+    const updated = updateNotificationSettingsRepo(req.body, officeId, unmasked);
     res.json({ success: true, settings: updated, message: 'Configurações de canais de notificação atualizadas com sucesso' });
   } catch (error) {
     console.error('Error updating notification settings:', error);
