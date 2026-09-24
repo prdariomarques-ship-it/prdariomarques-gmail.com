@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ShieldAlert,
   PieChart,
@@ -16,9 +16,14 @@ import {
   Lock,
   Dumbbell,
   Layers,
+  Fuel,
+  Flame,
+  Target,
 } from 'lucide-react';
 import { DataMode, ComplianceNotification, NotificationChannelSettings } from '../types';
 import { NotificationCenterDropdown } from './NotificationCenterDropdown';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { ProfilePhotoModal } from './common/ProfilePhotoModal';
 
 export type TabKey =
   | 'cockpit'
@@ -34,7 +39,9 @@ export type TabKey =
   | 'limits'
   | 'api-diagnostics'
   | 'barbell'
-  | 'correlation';
+  | 'correlation'
+  | 'tactical-risk'
+  | 'asset-drift';
 
 interface HeaderProps {
   activeTab: TabKey;
@@ -93,6 +100,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenApiSecurity,
   hasAuthError = false,
 }) => {
+  const { photoUrl } = useUserProfile();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -225,11 +235,77 @@ export const Header: React.FC<HeaderProps> = ({
               <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isResetting ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Resetar Demo</span>
             </button>
+
+            {/* Perfil Executivo de Dário Marques (Foto no Nome) */}
+            <div className="h-6 w-px bg-slate-800 hidden sm:block" />
+
+            <button
+              onClick={() => setIsProfileModalOpen(true)}
+              className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl bg-slate-800/90 hover:bg-slate-750 border border-slate-700 hover:border-cyan-500/50 text-left transition cursor-pointer group shadow-xs"
+              title="Perfil de Dário Marques - Clique para trocar ou visualizar foto"
+            >
+              <div className="relative w-7 h-7 rounded-full overflow-hidden bg-slate-950 border border-cyan-500/50 shrink-0 flex items-center justify-center shadow-xs">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Dário Marques"
+                    className="w-full h-full object-cover object-top filter brightness-100 contrast-105"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-700 flex items-center justify-center text-[10px] font-black text-white">
+                    DM
+                  </div>
+                )}
+                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-slate-900" />
+              </div>
+
+              <div className="hidden md:block leading-tight">
+                <span className="block text-xs font-bold text-white group-hover:text-cyan-300 transition">
+                  Dário Marques
+                </span>
+                <span className="block text-[9px] text-cyan-400 font-semibold uppercase tracking-wider">
+                  Especialista MPX
+                </span>
+              </div>
+            </button>
           </div>
         </div>
 
+        {/* Modal de Foto de Perfil de Dário Marques */}
+        <ProfilePhotoModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+        />
+
         {/* Navigation Tabs */}
         <div className="flex space-x-1 overflow-x-auto py-2 scrollbar-none border-t border-slate-800/80">
+          <button
+            onClick={() => setActiveTab('cockpit')}
+            className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition whitespace-nowrap ${
+              activeTab === 'cockpit'
+                ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40 shadow'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Radio className="w-4 h-4 mr-2 text-blue-400" />
+            Cockpit Executivo
+          </button>
+
+          <button
+            onClick={() => setActiveTab('market')}
+            className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-bold rounded-lg transition whitespace-nowrap ${
+              activeTab === 'market'
+                ? 'bg-gradient-to-r from-rose-600/30 to-amber-600/30 text-amber-300 border border-amber-500/50 shadow-md'
+                : 'text-amber-400/90 hover:text-amber-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Fuel className="w-4 h-4 mr-2 text-rose-400 animate-pulse" />
+            Radar de Mercado
+            <span className="ml-2 px-1.5 py-0.2 text-[10px] font-black rounded-full bg-rose-500 text-white animate-pulse">
+              🚨 Diesel
+            </span>
+          </button>
+
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition whitespace-nowrap ${
@@ -344,6 +420,30 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Layers className="w-4 h-4 mr-2" />
             Matriz de Correlação
+          </button>
+
+          <button
+            onClick={() => setActiveTab('tactical-risk')}
+            className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition whitespace-nowrap ${
+              activeTab === 'tactical-risk'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-amber-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Flame className="w-4 h-4 mr-2 text-amber-400" />
+            Risco Tático & Energia
+          </button>
+
+          <button
+            onClick={() => setActiveTab('asset-drift')}
+            className={`flex items-center px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition whitespace-nowrap ${
+              activeTab === 'asset-drift'
+                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-xs'
+                : 'text-slate-400 hover:text-amber-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Target className="w-4 h-4 mr-2 text-amber-400" />
+            Asset Drift (±2.5%)
           </button>
 
           <button

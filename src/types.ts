@@ -37,6 +37,8 @@ export interface Asset {
   currentPrice?: number;
   totalValue: number;
   allocationPercent: number;
+  targetPercent?: number; // Meta estratégica de alocação (% do AUM)
+  driftTolerancePP?: number; // Tolerância máxima de desvio antes do alerta (padrão: 2.5 p.p.)
   averagePrice?: number;
   unrealizedGainBRL?: number;
   unrealizedGainPercent?: number;

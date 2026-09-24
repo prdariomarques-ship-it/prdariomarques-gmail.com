@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronUp,
   TrendingUp,
-
   FolderOpen,
   User,
   Sliders,
@@ -16,13 +15,19 @@ import {
   Sparkles,
   Download,
   Activity,
+  Target,
+  Flame,
+  ArrowRight,
 } from 'lucide-react';
 import { Portfolio, AssetClass } from '../types';
+import { TabKey } from './Header';
 import { AssetPerformancePanel } from './common/AssetPerformancePanel';
 import { PortfolioHealth } from './PortfolioHealth';
 import { RebalanceSimulationModal } from './RebalanceSimulationModal';
 import { RiskAnalytics } from './RiskAnalytics';
 import { StressTestModal } from './StressTestModal';
+import { AssetDriftTrendBadge } from './common/AssetDriftTrendBadge';
+import { getAssetStrategicTarget, calculateAssetDrift } from '../utils/assetDrift';
 
 interface PortfoliosViewProps {
   portfolios: Portfolio[];
@@ -30,6 +35,7 @@ interface PortfoliosViewProps {
   onSelectPortfolio: (id: string) => void;
   onStartRebalance: (portfolioId: string) => void;
   onOpenAgentWithPortfolio: (portfolioId: string) => void;
+  onNavigateTab?: (tab: TabKey) => void;
 }
 
 export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
@@ -38,12 +44,14 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
   onSelectPortfolio,
   onStartRebalance,
   onOpenAgentWithPortfolio,
+  onNavigateTab,
 }) => {
   const currentPortfolio =
     portfolios.find((p) => p.id === selectedPortfolioId) || portfolios[0];
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [isRebalanceModalOpen, setIsRebalanceModalOpen] = useState(false);
   const [isStressTestModalOpen, setIsStressTestModalOpen] = useState(false);
+  const [filterDriftOnly, setFilterDriftOnly] = useState(false);
 
   // Helper to calculate actual totals by class
   const classTotals: Record<string, number> = {
@@ -373,17 +381,76 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
 
           {/* Holdings Breakdown Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-cyan-400" />
-                  Composição dos Ativos em Carteira ({currentPortfolio.assets.length})
-                </h3>
-                <p className="text-xs text-slate-300">
-                  Custódia de títulos públicos, ações, ETFs, FIIs e fundos de investimento.
-                </p>
-              </div>
-            </div>
+            {/* Asset Drift Calculation & Banner */}
+            {(() => {
+              const driftItems = currentPortfolio.assets.map((asset) => {
+                const target = getAssetStrategicTarget(asset, currentPortfolio);
+                const diff = Number((asset.allocationPercent - target).toFixed(2));
+                const isDrift = Math.abs(diff) > 2.5;
+                return { asset, target, diff, isDrift };
+              });
+              const driftedCount = driftItems.filter((i) => i.isDrift).length;
+
+              return (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-cyan-400" />
+                        Composição dos Ativos em Carteira ({currentPortfolio.assets.length})
+                      </h3>
+                      <p className="text-xs text-slate-300">
+                        Custódia de títulos públicos, ações, ETFs, FIIs e fundos de investimento com monitor de drift tático.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {driftedCount > 0 && (
+                        <button
+                          onClick={() => setFilterDriftOnly(!filterDriftOnly)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            filterDriftOnly
+                              ? 'bg-amber-500 text-slate-950 shadow-xs'
+                              : 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                          }`}
+                          title="Filtrar apenas ativos com desvio da meta superior a 2.5%"
+                        >
+                          <Target className="w-3.5 h-3.5" />
+                          <span>{filterDriftOnly ? 'Ver Todos' : `Apenas Drift > 2.5% (${driftedCount})`}</span>
+                        </button>
+                      )}
+
+                      {onNavigateTab && (
+                        <button
+                          onClick={() => onNavigateTab('asset-drift')}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Monitor Completo</span>
+                          <ArrowRight className="w-3 h-3 text-slate-400" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {driftedCount > 0 && !filterDriftOnly && (
+                    <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="text-amber-200">
+                          <strong>Alerta Preventivo de Asset Drift:</strong> {driftedCount} {driftedCount === 1 ? 'ativo excede' : 'ativos excedem'} o corredor de tolerância tática de <strong>±2.5% p.p.</strong> em relação à meta estratégica, antes de violar os limites críticos de compliance.
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setFilterDriftOnly(true)}
+                        className="text-amber-300 hover:text-white underline font-bold shrink-0 text-[11px] cursor-pointer"
+                      >
+                        Filtrar ({driftedCount})
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
@@ -395,51 +462,77 @@ export const PortfoliosView: React.FC<PortfoliosViewProps> = ({
                     <th className="py-2.5 px-3 text-right">Quantidade</th>
                     <th className="py-2.5 px-3 text-right">Preço Unitário</th>
                     <th className="py-2.5 px-3 text-right">Valor Total (R$)</th>
-                    <th className="py-2.5 px-3 text-right">Peso na Carteira</th>
+                    <th className="py-2.5 px-3 text-right">Peso Atual</th>
+                    <th className="py-2.5 px-3 text-right">Meta (Target)</th>
+                    <th className="py-2.5 px-3 text-center">Drift Tático (Tendência)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {currentPortfolio.assets.map((asset) => {
-                    return (
-                      <React.Fragment key={asset.id}>
-                      <tr 
-                        className="hover:bg-slate-800/40 transition cursor-pointer"
-                        onClick={() => setExpandedAssetId(expandedAssetId === asset.id ? null : asset.id)}
-                      >
-                        <td className="py-2.5 px-3 font-bold text-white">
-                          <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-emerald-400 font-mono">
-                            {asset.ticker}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-200">
-                          {asset.name}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-300 font-medium">
-                          {asset.assetClass}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-slate-200 font-mono">
-                          {asset.quantity !== undefined ? asset.quantity.toLocaleString('pt-BR') : '-'}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-slate-200 font-mono">
-                          {asset.currentPrice !== undefined ? `R$ ${asset.currentPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-semibold text-white font-mono">
-                          R$ {asset.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-semibold text-emerald-400 font-mono">
-                          {asset.allocationPercent.toFixed(2)}%
-                        </td>
-                      </tr>
-                      {expandedAssetId === asset.id && (
-                        <tr className="bg-slate-900/50">
-                          <td colSpan={7} className="p-0 border-b border-white/[0.05]">
-                            <AssetPerformancePanel asset={asset} />
+                  {currentPortfolio.assets
+                    .filter((asset) => {
+                      if (!filterDriftOnly) return true;
+                      const target = getAssetStrategicTarget(asset, currentPortfolio);
+                      const diff = Math.abs(asset.allocationPercent - target);
+                      return diff > 2.5;
+                    })
+                    .map((asset) => {
+                      const targetPercent = getAssetStrategicTarget(asset, currentPortfolio);
+                      const diff = asset.allocationPercent - targetPercent;
+                      const isDrift = Math.abs(diff) > 2.5;
+
+                      return (
+                        <React.Fragment key={asset.id}>
+                        <tr 
+                          className={`hover:bg-slate-800/40 transition cursor-pointer ${
+                            isDrift ? 'bg-amber-950/10' : ''
+                          }`}
+                          onClick={() => setExpandedAssetId(expandedAssetId === asset.id ? null : asset.id)}
+                        >
+                          <td className="py-2.5 px-3 font-bold text-white">
+                            <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-emerald-400 font-mono">
+                              {asset.ticker}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-200 font-medium">
+                            {asset.name}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-300 font-medium">
+                            {asset.assetClass}
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-slate-200 font-mono">
+                            {asset.quantity !== undefined ? asset.quantity.toLocaleString('pt-BR') : '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-slate-200 font-mono">
+                            {asset.currentPrice !== undefined ? `R$ ${asset.currentPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-semibold text-white font-mono">
+                            R$ {asset.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-white font-mono">
+                            {asset.allocationPercent.toFixed(2)}%
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-semibold text-indigo-300 font-mono">
+                            {targetPercent.toFixed(2)}%
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <AssetDriftTrendBadge
+                              currentPercent={asset.allocationPercent}
+                              targetPercent={targetPercent}
+                              tolerancePP={2.5}
+                              size="sm"
+                            />
                           </td>
                         </tr>
-                      )}
-                      </React.Fragment>
-                    );
-                  })}
+                        {expandedAssetId === asset.id && (
+                          <tr className="bg-slate-900/50">
+                            <td colSpan={9} className="p-0 border-b border-white/[0.05]">
+                              <AssetPerformancePanel asset={asset} />
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>

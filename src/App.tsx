@@ -10,6 +10,8 @@ import { LimitsConfigurationView } from './components/LimitsConfigurationView';
 import { ApiDiagnosticsView } from './components/ApiDiagnosticsView';
 import { BarbellStrategyView } from './components/BarbellStrategyView';
 import { CorrelationMatrixView } from './components/CorrelationMatrixView';
+import { TacticalRiskView } from './components/TacticalRiskView';
+import { AssetDriftMonitor } from './components/AssetDriftMonitor';
 import { CockpitExecutiveView } from './components/CockpitExecutiveView';
 import { CommandPrioritiesView } from './components/CommandPrioritiesView';
 import { ClientsDirectoryView } from './components/ClientsDirectoryView';
@@ -843,7 +845,14 @@ export default function App() {
             )}
 
             {activeTab === 'market' && (
-              <MarketIntelligenceView />
+              <MarketIntelligenceView
+                portfolios={effectivePortfolios}
+                selectedPortfolioId={selectedPortfolioId}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onStartRebalance={handleStartRebalance}
+                currency="BRL"
+              />
             )}
 
             {activeTab === 'dashboard' && (
@@ -883,6 +892,7 @@ export default function App() {
                 onSelectPortfolio={setSelectedPortfolioId}
                 onStartRebalance={handleStartRebalance}
                 onOpenAgentWithPortfolio={handleOpenAgentWithPortfolio}
+                onNavigateTab={setActiveTab}
               />
             )}
 
@@ -919,6 +929,26 @@ export default function App() {
                 alerts={effectiveAlerts}
                 onSelectPortfolio={handleSelectPortfolio}
                 onNavigateTab={(tab) => setActiveTab(tab)}
+              />
+            )}
+
+            {activeTab === 'tactical-risk' && (
+              <TacticalRiskView
+                portfolios={effectivePortfolios}
+                alerts={effectiveAlerts}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+              />
+            )}
+
+            {activeTab === 'asset-drift' && (
+              <AssetDriftMonitor
+                portfolios={effectivePortfolios}
+                onSelectPortfolio={handleSelectPortfolio}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onOpenAgentWithAsset={(portfolioId, ticker, prompt) => {
+                  handleOpenAgentWithPortfolio(portfolioId);
+                }}
               />
             )}
 

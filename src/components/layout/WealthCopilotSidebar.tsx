@@ -109,6 +109,22 @@ export const WealthCopilotSidebar: React.FC<WealthCopilotSidebarProps> = ({
       description: 'Matriz de Correlação & Clustering Sistêmico',
     },
     {
+      id: 'tactical-risk' as TabKey,
+      label: 'Risco Tático',
+      icon: Flame,
+      badge: 'Energia',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      description: 'Mapa de Calor & Clusters de Risco em Energia',
+    },
+    {
+      id: 'asset-drift' as TabKey,
+      label: 'Asset Drift',
+      icon: Target,
+      badge: '±2.5%',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      description: 'Monitor de Desvio Tático & Tendência vs Metas',
+    },
+    {
       id: 'barbell' as TabKey,
       label: 'Estratégias',
       icon: Layers,

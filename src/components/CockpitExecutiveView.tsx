@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ShieldAlert,
   AlertTriangle,
@@ -17,11 +17,21 @@ import {
   PieChart,
   RefreshCw,
   ExternalLink,
+  ArrowRight,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  ChevronDown,
+  Loader2,
 } from 'lucide-react';
 import { Portfolio, ComplianceAlert, DataMode } from '../types';
 import { TabKey } from './Header';
 import { DarioProfileCard } from './common/DarioProfileCard';
+import { AumWeightedComplianceScoreCard } from './AumWeightedComplianceScoreCard';
 import { INITIAL_MARKET_ASSETS, CLIENTS_DIRECTORY, MarketAsset } from '../data/wealthCopilotData';
+import { downloadExecutiveComplianceExcel } from '../utils/excelExport';
+import { downloadPortfolioComplianceReportPDF } from '../utils/pdfExport';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface CockpitExecutiveViewProps {
   portfolios: Portfolio[];
@@ -44,6 +54,8 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
   searchQuery = '',
   onOpenAiQuery,
 }) => {
+  const { photoUrl } = useUserProfile();
+
   // Estado de Visualização Financeira
   const [currency, setCurrency] = useState<'USD' | 'BRL'>('USD');
   const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(false);
@@ -54,19 +66,127 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
 
+  // Estados da Função de Exportação de Dados (Excel e PDF)
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fecha o menu de exportação ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
+
   // Totais calculados
   const totalAumBRL = useMemo(() => {
     return portfolios.reduce((acc, p) => acc + p.totalAum, 0);
   }, [portfolios]);
 
-  // Taxa de conversão estimada BRL/USD
-  const usdRate = 5.16;
+  // Taxa de conversão Ptax BRL/USD
+  const usdRate = 5.42;
   const displayAum = useMemo(() => {
     if (currency === 'USD') {
-      return '$17.1M';
+      const aumUsd = totalAumBRL / usdRate;
+      return `$ ${(aumUsd / 1_000_000).toFixed(2)}M`;
     }
     return `R$ ${(totalAumBRL / 1_000_000).toFixed(1)}M`;
-  }, [currency, totalAumBRL]);
+  }, [currency, totalAumBRL, usdRate]);
+
+  // Cálculo do Compliance Score Ponderado pelo AUM
+  const weightedComplianceScore = useMemo(() => {
+    const total = portfolios.reduce((sum, p) => sum + (p.totalAum || 0), 0) || 1;
+    let weightedSum = 0;
+    portfolios.forEach((p) => {
+      const portAum = p.totalAum || 0;
+      const weight = portAum / total;
+      const portAlerts = alerts.filter((a) => a.portfolioId === p.id);
+      const crit = portAlerts.filter((a) => a.severity === 'CRITICAL').length;
+      const warn = portAlerts.filter((a) => a.severity === 'WARNING').length;
+      let score = 96.5;
+      if (p.status === 'CRITICAL' || crit > 0) {
+        score = 74.0;
+      } else if (p.status === 'WARNING' || warn > 0) {
+        score = 86.0;
+      }
+      weightedSum += score * weight;
+    });
+    return Number(weightedSum.toFixed(1));
+  }, [portfolios, alerts]);
+
+  // Handler de Exportação para Excel
+  const handleExportExcel = () => {
+    setIsExportingExcel(true);
+    setShowExportMenu(false);
+    try {
+      downloadExecutiveComplianceExcel(portfolios, alerts, {
+        managerName: 'Dário Marques',
+        weightedComplianceScore,
+        currency,
+        usdRate,
+      });
+      setExportFeedback('Planilha de Compliance em Excel (.xls) exportada com sucesso!');
+      setTimeout(() => setExportFeedback(null), 4000);
+    } catch (err) {
+      console.error('Erro ao exportar Excel:', err);
+    } finally {
+      setTimeout(() => setIsExportingExcel(false), 800);
+    }
+  };
+
+  // Handler de Exportação para PDF
+  const handleExportPdf = () => {
+    setIsExportingPdf(true);
+    setShowExportMenu(false);
+    try {
+      downloadPortfolioComplianceReportPDF(portfolios, alerts, {
+        managerName: 'Dário Marques',
+        weightedComplianceScore,
+        currency,
+        usdRate,
+      });
+      setExportFeedback('Relatório Executivo de Compliance em PDF gerado com sucesso!');
+      setTimeout(() => setExportFeedback(null), 4000);
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+    } finally {
+      setTimeout(() => setIsExportingPdf(false), 800);
+    }
+  };
+
+  // Saudação dinâmica conforme o horário local (Bom dia, Boa tarde ou Boa noite)
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        text: 'Bom dia',
+        icon: '☀️',
+        sub: 'Início dos pregões e posições de abertura',
+      };
+    }
+    if (hour >= 12 && hour < 18) {
+      return {
+        text: 'Boa tarde',
+        icon: '🌤️',
+        sub: 'Monitoramento contínuo intradiário e liquidez',
+      };
+    }
+    return {
+      text: 'Boa noite',
+      icon: '🌙',
+      sub: 'Fechamento de pregão, consolidação fiduciária e overnight',
+    };
+  }, []);
 
   // Quick Prompt handlers para o Assistente IA
   const quickPrompts = [
@@ -142,20 +262,126 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
     <div className="space-y-6 animate-fadeIn text-slate-100">
       {/* Top Greeting Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            <span>Bom dia, Dário!</span>
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Aqui está o que merece a sua atenção hoje.
-          </p>
+        <div className="flex items-center gap-3.5">
+          <div
+            onClick={() => onNavigateTab('owner')}
+            className="relative w-12 h-12 rounded-2xl overflow-hidden bg-slate-900 border-2 border-cyan-500/40 shadow-lg shadow-cyan-950/40 shrink-0 cursor-pointer hover:border-cyan-400 transition"
+            title="Perfil de Dário Marques - Clique para gerenciar"
+          >
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt="Dário Marques"
+                className="w-full h-full object-cover object-top filter brightness-100 contrast-105"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-700 flex items-center justify-center text-sm font-black text-white">
+                DM
+              </div>
+            )}
+            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950" />
+          </div>
+
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+              <span>{greeting.text}, Dário!</span>
+              <span className="text-2xl" role="img" aria-label="período do dia">
+                {greeting.icon}
+              </span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Aqui está o que merece a sua atenção agora • <span className="text-slate-300">{greeting.sub}</span>.
+            </p>
+          </div>
         </div>
 
-        {/* Action button to switch to Command Mode */}
-        <div className="flex items-center gap-2">
+        {/* Action buttons: Export Reports + Switch to Command Mode */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Dropdown de Exportação de Relatórios de Compliance */}
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setShowExportMenu((prev) => !prev)}
+              disabled={isExportingExcel || isExportingPdf}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600/90 to-teal-600/90 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/40 text-xs font-bold text-white transition flex items-center gap-2 shadow-lg shadow-emerald-950/30 cursor-pointer disabled:opacity-60"
+              title="Baixar relatórios de Compliance Score e status das carteiras em formatos Excel ou PDF"
+            >
+              {isExportingExcel || isExportingPdf ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-white" />
+              )}
+              <span>Exportar Relatório</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  showExportMenu ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-80 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl p-2 z-50 animate-fadeIn backdrop-blur-md">
+                <div className="px-3 py-2 border-b border-slate-800/80 mb-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">
+                      Exportar Conformidade
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
+                      CVM 175
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Selecione o formato para consolidar o Compliance Score e status das {portfolios.length} carteiras.
+                  </p>
+                </div>
+
+                {/* Opção 1: Planilha Excel (.xls / .xlsx) */}
+                <button
+                  onClick={handleExportExcel}
+                  className="w-full text-left p-2.5 rounded-lg hover:bg-slate-900 border border-transparent hover:border-emerald-500/30 transition flex items-start gap-3 group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white group-hover:text-emerald-300 transition flex items-center gap-1.5">
+                      <span>Planilha Excel (.xls)</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-medium">
+                        3 Abas
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                      Resumo executivo, status detalhado de cada carteira e matriz de alertas fiduciários.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Opção 2: Documento Executivo em PDF */}
+                <button
+                  onClick={handleExportPdf}
+                  className="w-full text-left p-2.5 rounded-lg hover:bg-slate-900 border border-transparent hover:border-rose-500/30 transition flex items-start gap-3 group cursor-pointer mt-1"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white group-hover:text-rose-300 transition flex items-center gap-1.5">
+                      <span>Relatório Executivo PDF</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-mono font-medium">
+                        A4 Auditável
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                      Documento formal diagramado para diretoria, comitê de risco e comprovação regulatória.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => onNavigateTab('command-center')}
-            className="px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs font-semibold text-cyan-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2 shadow-sm"
+            className="px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs font-semibold text-cyan-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <span className="w-2 h-2 rounded-full bg-cyan-400" />
             <span>Ver Modo Comando Operacional</span>
@@ -273,8 +499,18 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
           />
         </div>
 
-        {/* Right Columns (lg:col-span-9): 3 Analytics Cards */}
+        {/* Right Columns (lg:col-span-9): Analytics Cards & Widgets */}
         <div className="lg:col-span-9 space-y-6">
+          {/* Card: Compliance Score Médio Ponderado por AUM (Circular Red-to-Green Indicator) */}
+          <AumWeightedComplianceScoreCard
+            portfolios={portfolios}
+            alerts={alerts}
+            currency={currency}
+            onNavigateTab={onNavigateTab}
+            onSelectPortfolio={onSelectPortfolio}
+            onStartRebalance={onStartRebalance}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card A: Patrimônio Total */}
             <div className="p-4 rounded-2xl bg-[#0E1626] border border-slate-800 shadow-xl flex flex-col justify-between">
@@ -560,6 +796,35 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
             </div>
           </div>
 
+          {/* Banner de Alerta Fiduciário: Choque de Energia & Radar de Mercado */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-950/40 via-amber-950/30 to-[#0E1626] border border-rose-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                <span className="text-xl">⛽</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-black text-rose-300 uppercase tracking-wide">
+                    🚨 Radar Fiduciário: Alerta no Mercado de Energia &amp; Diesel Global
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-rose-500/20 text-rose-200 font-bold border border-rose-500/30 animate-pulse">
+                    Over • Neutro • Under
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                  Corte nas refinarias da Rússia e discussão de restrição nos EUA pressionam o diesel brasileiro (80% do importado). Recalibre carteiras com <strong>Overweight</strong> em commodities energéticas e <strong>Underweight</strong> em transporte rodoviário.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigateTab('market')}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-lg shadow-rose-950/40 transition shrink-0 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <span>Acessar Radar &amp; Recalibrar</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Lower 3 Widgets Row: Alertas de Desenquadramento | Movimentos de Mercado | Assistente IA */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Widget 1: Alertas de Desenquadramento */}
@@ -752,10 +1017,10 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
                   </div>
                   <div>
                     <p className="text-xs text-slate-200 font-medium">
-                      Olá, Dário!
+                      {greeting.text}, Dário! {greeting.icon}
                     </p>
                     <p className="text-[11px] text-slate-400">
-                      Como posso te ajudar hoje?
+                      Como posso te ajudar neste momento?
                     </p>
                   </div>
                 </div>
@@ -856,6 +1121,16 @@ export const CockpitExecutiveView: React.FC<CockpitExecutiveViewProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Toast Flutuante de Sucesso de Exportação */}
+      {exportFeedback && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-950/95 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl shadow-2xl shadow-emerald-950/50 flex items-center gap-3 text-xs font-semibold backdrop-blur-md animate-fadeIn">
+          <div className="p-1 rounded-full bg-emerald-500/20 text-emerald-400">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+          <span>{exportFeedback}</span>
+        </div>
+      )}
     </div>
   );
 };

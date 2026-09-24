@@ -22,6 +22,7 @@ import {
   Activity,
   Maximize2,
   Share2,
+  Flame,
 } from 'lucide-react';
 import { Portfolio, ComplianceAlert, AssetClass, Asset } from '../types';
 import { TabKey } from './Header';
@@ -596,6 +597,17 @@ export const CorrelationMatrixView: React.FC<CorrelationMatrixViewProps> = ({
               <GitMerge className="w-3.5 h-3.5" />
               <span>Clustering Setorial ({marketClusters.length})</span>
             </button>
+
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('tactical-risk')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition shadow-xs cursor-pointer ml-1"
+                title="Abrir Mapa de Calor Setorial em Tempo Real e Análise de Clusters de Energia"
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-400" />
+                <span>Risco Tático & Energia (Tempo Real) 🔥</span>
+              </button>
+            )}
           </div>
 
           <button

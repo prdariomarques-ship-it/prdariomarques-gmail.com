@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ShieldAlert,
   AlertTriangle,
@@ -86,6 +86,13 @@ export const CommandPrioritiesView: React.FC<CommandPrioritiesViewProps> = ({
     if (marketCategory === 'JUROS') return item.category === 'JUROS';
     return true;
   });
+
+  const greetingText = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return { text: 'Bom dia', icon: '☀️' };
+    if (hour >= 12 && hour < 18) return { text: 'Boa tarde', icon: '🌤️' };
+    return { text: 'Boa noite', icon: '🌙' };
+  }, []);
 
   const handleAskQuick = (questionText?: string) => {
     const q = questionText || quickQuery;
@@ -445,8 +452,10 @@ export const CommandPrioritiesView: React.FC<CommandPrioritiesViewProps> = ({
                 DM
               </div>
               <div>
-                <p className="text-xs text-slate-200 font-medium">Olá, Dário!</p>
-                <p className="text-[11px] text-slate-400">Como posso te ajudar hoje?</p>
+                <p className="text-xs text-slate-200 font-medium">
+                  {greetingText.text}, Dário! {greetingText.icon}
+                </p>
+                <p className="text-[11px] text-slate-400">Como posso te ajudar neste momento?</p>
               </div>
             </div>
 

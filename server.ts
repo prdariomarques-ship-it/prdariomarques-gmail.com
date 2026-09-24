@@ -33,14 +33,72 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ limit: '25mb', extended: true }));
 import cors from 'cors';
 import { enrichPortfoliosWithMarketData } from './src/server/marketDataService.ts';
+import { getLiveMarketQuotes } from './src/server/marketQuotesServer.ts';
 app.use(cors({
   origin: '*', // Permitir de qualquer origem (inclusive app Capacitor localhost)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// ==========================================
+// ENDPOINTS DE FOTO DE PERFIL DO GESTOR (DÁRIO MARQUES)
+// ==========================================
+const PROFILE_PHOTO_FILE = path.join(process.cwd(), 'data', 'dario_profile.json');
+
+app.get('/api/user/profile-photo', (req, res) => {
+  try {
+    if (fs.existsSync(PROFILE_PHOTO_FILE)) {
+      const data = JSON.parse(fs.readFileSync(PROFILE_PHOTO_FILE, 'utf-8'));
+      return res.json({ success: true, photoUrl: data.photoUrl });
+    }
+    return res.json({ success: true, photoUrl: null });
+  } catch (error) {
+    console.error('Error reading profile photo:', error);
+    return res.json({ success: false, photoUrl: null });
+  }
+});
+
+app.post('/api/user/profile-photo', (req, res) => {
+  try {
+    const { photoUrl } = req.body;
+    const dir = path.dirname(PROFILE_PHOTO_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(PROFILE_PHOTO_FILE, JSON.stringify({ photoUrl, updatedAt: new Date().toISOString() }), 'utf-8');
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving profile photo:', error);
+    return res.status(500).json({ success: false, error: 'Falha ao salvar foto de perfil' });
+  }
+});
+
+// ==========================================
+// ENDPOINT DE COTAÇÕES EM TEMPO REAL (PÚBLICO PARA TELEMETRIA / TICKER)
+// ==========================================
+app.get('/api/market/quotes', (req, res) => {
+  try {
+    const data = getLiveMarketQuotes();
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching live market quotes:', error);
+    res.status(500).json({ success: false, error: 'Falha ao obter cotações de mercado' });
+  }
+});
+
+app.get('/api/market-quotes', (req, res) => {
+  try {
+    const data = getLiveMarketQuotes();
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching live market quotes:', error);
+    res.status(500).json({ success: false, error: 'Falha ao obter cotações de mercado' });
+  }
+});
 
 
 

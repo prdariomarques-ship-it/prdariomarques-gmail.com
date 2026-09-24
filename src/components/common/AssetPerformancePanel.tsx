@@ -1,30 +1,76 @@
 import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, AlertCircle } from 'lucide-react';
+import { TrendingUp, AlertCircle, Target, Flame, CheckCircle2, TrendingDown } from 'lucide-react';
 import { Asset } from '../../types';
+import { AssetDriftTrendBadge } from './AssetDriftTrendBadge';
+import { getAssetStrategicTarget } from '../../utils/assetDrift';
 
 interface AssetPerformancePanelProps {
   asset: Asset;
 }
 
-
-
-
 export const AssetPerformancePanel: React.FC<AssetPerformancePanelProps> = ({ asset }) => {
-  
-
   const isPositive = asset.historicalPerformance?.twelveMonths !== undefined && asset.historicalPerformance.twelveMonths >= 0;
   const strokeColor = isPositive ? '#10b981' : '#f43f5e';
   const fillColor = isPositive ? '#10b981' : '#f43f5e';
 
+  const targetPercent = getAssetStrategicTarget(asset);
+  const diff = Number((asset.allocationPercent - targetPercent).toFixed(2));
+  const absDiff = Math.abs(diff);
+  const isDrift = absDiff > 2.5;
+
   return (
-    <div className="p-4 border-l-2 border-emerald-500/50 m-2 rounded-r-lg bg-slate-950/40">
-      <div className="flex items-center justify-between mb-4">
+    <div className="p-4 border-l-2 border-emerald-500/50 m-2 rounded-r-lg bg-slate-950/40 space-y-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <TrendingUp className="w-4 h-4 text-emerald-400" />
           <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-            Performance Histórica - {asset.ticker}
+            Performance &amp; Diagnóstico Tático - {asset.ticker} ({asset.name})
           </h4>
+        </div>
+
+        <AssetDriftTrendBadge
+          currentPercent={asset.allocationPercent}
+          targetPercent={targetPercent}
+          tolerancePP={2.5}
+          size="md"
+        />
+      </div>
+
+      {/* Asset Drift Diagnostic Box */}
+      <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+        isDrift
+          ? diff > 0
+            ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+            : 'bg-cyan-950/20 border-cyan-500/40 text-cyan-200'
+          : 'bg-slate-900/60 border-slate-800 text-slate-300'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800">
+            {diff > 0.05 ? (
+              <TrendingUp className="w-4 h-4 text-amber-400" />
+            ) : diff < -0.05 ? (
+              <TrendingDown className="w-4 h-4 text-cyan-400" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            )}
+          </div>
+          <div>
+            <div className="text-xs font-bold flex items-center gap-2">
+              <span>Alocação Atual: <strong className="text-white font-mono">{asset.allocationPercent.toFixed(2)}%</strong></span>
+              <span className="text-slate-500">•</span>
+              <span>Meta IPS: <strong className="text-indigo-300 font-mono">{targetPercent.toFixed(2)}%</strong></span>
+              <span className="text-slate-500">•</span>
+              <span>Desvio: <strong className={`font-mono ${diff > 0 ? 'text-amber-300' : diff < 0 ? 'text-cyan-300' : 'text-emerald-300'}`}>{diff > 0 ? `+${diff.toFixed(2)}` : `${diff.toFixed(2)}`} p.p.</strong></span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {isDrift
+                ? diff > 0
+                  ? 'Ativo sobre-alocado além da margem de 2.5% p.p. Sugerida realização ou corte tático preventivo antes do teto crítico regulatório.'
+                  : 'Ativo sub-alocado além da margem de 2.5% p.p. Sugerido aporte para recomposição da meta estratégica.'
+                : 'Alocação equilibrada dentro do corredor de tolerância tática de ±2.5% p.p.'}
+            </p>
+          </div>
         </div>
       </div>
       

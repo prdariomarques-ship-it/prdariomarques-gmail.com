@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Portfolio, ComplianceAlert, DataMode } from '../types';
 import { TabKey } from './Header';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface OwnerCommandCenterViewProps {
   portfolios: Portfolio[];
@@ -48,6 +49,7 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
   onStartRebalance,
   dataMode = 'LIVE',
 }) => {
+  const { photoUrl } = useUserProfile();
   const [selectedPortfolioFilter, setSelectedPortfolioFilter] = useState<string>('ALL');
   const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -157,10 +159,21 @@ export const OwnerCommandCenterView: React.FC<OwnerCommandCenterViewProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1">
             <span className="font-semibold text-cyan-400">MPX Wealth Management</span>
             <span>•</span>
-            <span>Gestor Responsável: Dário Marques Neto</span>
+            <div className="inline-flex items-center gap-1.5 font-medium text-slate-200">
+              <div className="relative w-5 h-5 rounded-full overflow-hidden bg-slate-900 border border-cyan-500/40 shrink-0">
+                {photoUrl ? (
+                  <img src={photoUrl} alt="Dário Marques" className="w-full h-full object-cover object-top" />
+                ) : (
+                  <div className="w-full h-full bg-cyan-600 flex items-center justify-center text-[8px] font-bold text-white">
+                    DM
+                  </div>
+                )}
+              </div>
+              <span>Gestor Responsável: Dário Marques Neto</span>
+            </div>
             <span>•</span>
             <span className="text-slate-500">Modo: {dataMode}</span>
           </div>
